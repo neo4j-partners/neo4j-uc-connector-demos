@@ -32,10 +32,16 @@ Databricks runs custom JDBC drivers in an isolated JVM sandbox. The connector re
 
 ### Project Layout
 
-- `neo4j-unity-catalog-connector/` — Maven project (Java 17), the connector JAR
-- `neo4j-uc-federation-lab/` — Databricks notebooks (5 numbered notebooks demonstrating patterns)
-- `site/` — Antora documentation site (AsciiDoc, published to GitHub Pages)
+- `getting-started/` — Tutorial: 4 ordered Databricks notebooks (load graph → connect → federate → materialize)
+- `examples/` — In-depth notebooks: metadata sync (Delta + External API), advanced federated queries, performance diagnostics
+- `validation/` — Programmatic Python scripts run as Databricks jobs (data load, connection validation, federated queries, metadata sync, advanced Spark patterns)
+- `driver-tests/` — Local Java/Maven tests for Neo4j JDBC SQL-to-Cypher translation (no Databricks required)
 - `docs/` — Markdown reference documentation
+- `site/` — Antora documentation site (AsciiDoc, published to GitHub Pages)
+- `.archive/` — Internal scratch and superseded notes (gitignored)
+
+The connector JAR itself lives in a separate repo:
+[neo4j-unity-catalog-connector](https://github.com/neo4j-labs/neo4j-unity-catalog-connector).
 
 ## Code Style
 
@@ -44,11 +50,11 @@ Databricks runs custom JDBC drivers in an isolated JVM sandbox. The connector re
 
 ## Testing
 
-JUnit 5 tests in `neo4j-unity-catalog-connector/src/test/java/`. Key test (`BundledTranslatorsTest.java`) verifies:
-- SPI discovery of both translator factories
-- Spark subquery cleaning pipeline
-- Cypher passthrough behavior
-- Neo4j JDBC driver class loading
+JUnit 5 tests in `driver-tests/src/test/java/` validate driver-level SQL-to-Cypher
+translation locally. Run `./mvn test` from `driver-tests/`. The connector JAR's
+own JUnit suite lives in the separate
+[neo4j-unity-catalog-connector](https://github.com/neo4j-labs/neo4j-unity-catalog-connector)
+repo.
 
 ## Release Process
 

@@ -36,6 +36,7 @@ wheels/
 *.env
 .env*
 !.env.sample
+!.env.example
 .venv/
 venv/
 ENV/
@@ -142,16 +143,15 @@ coverage/
 *~
 
 # Proposals / working docs
-neo4j-uc-federation-lab/OAUTH_UC.md
-neo4j-uc-federation-lab/OAUTH_UC_HACK.md
+examples/OAUTH_UC.md
+examples/OAUTH_UC_HACK.md
 
 # Secrets and credentials
 *-connection.json
 **/credentials.json
 **/service-account*.json
 **/*secret*
-!sample-validation/create_secrets.sh
-!validate-federation/create_secrets.sh
+!validation/create_secrets.sh
 **/*.pem
 **/*.key
 **/*.p12
@@ -171,4 +171,4 @@ site/build/
 .databricks
 
 
-worklog/
+.archive/

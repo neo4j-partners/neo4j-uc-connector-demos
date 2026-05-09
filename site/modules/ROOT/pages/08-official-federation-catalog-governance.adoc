@@ -14,65 +14,29 @@ For Neo4j, this would mean node labels and relationship types appearing as table
 
 === Setup
 
-==== Step 1: Configure and deploy the Lakebase instance
+==== Step 1: Provision a Lakebase instance and load the financial data
 
-Copy `deploy-lakebase/.env.sample` to `deploy-lakebase/.env` and set the two values:
+Provision a Lakebase (managed PostgreSQL) instance through the Databricks workspace UI or your preferred infrastructure tooling, then load four tables into the `public` schema of `databricks_postgres`:
 
-[source]
-----
-LAKEBASE_PROJECT_NAME=lakebase-flb-demo
-DATABRICKS_PROFILE=azure-rk-knight
-----
+* `companies`
+* `asset_managers`
+* `asset_manager_holdings`
+* `financial_metrics`
 
-Then run the deploy script:
+Capture the connection host, username, and OAuth token (or password) — they are needed in the next step.
 
-[source,bash]
-----
-./deploy-lakebase/deploy.py deploy
-----
+==== Step 2: Create the connection and foreign catalog in Catalog Explorer
 
-The script creates the Lakebase project, generates an OAuth credential, and writes a connection file to `deploy-lakebase/lakebase-flb-demo-connection.json`. The JSON contains everything needed for the next steps:
-
-[source,json]
-----
-{
-  "project": "lakebase-flb-demo",
-  "branch": "main",
-  "endpoint": "main",
-  "connection": {
-    "host": "<your-instance>.lakebase.databricks.com",
-    "port": 5432,
-    "database": "databricks_postgres",
-    "username": "you@company.com",
-    "password": "<oauth-token>",
-    "token_expires": "2026-04-09T22:00:00Z"
-  }
-}
-----
-
-NOTE: The OAuth token expires after one hour. Run `./deploy-lakebase/deploy.py refresh` to generate a fresh token and overwrite the connection file before the demo.
-
-==== Step 2: Load the financial data
-
-[source,bash]
-----
-./deploy-lakebase/test_lakebase.py
-----
-
-This creates four tables (`companies`, `asset_managers`, `asset_manager_holdings`, `financial_metrics`) in the `public` schema of `databricks_postgres` and loads all CSV data from `deploy-lakebase/data/`. It then runs a set of verification queries and prints row counts and sample results to confirm the data is in place.
-
-==== Step 3: Create the connection and foreign catalog in Catalog Explorer
-
-Open the connection JSON and copy the `host`, `username`, and `password` fields.
+Use the connection details captured in Step 1.
 
 . In your Databricks workspace, click *Catalog* in the left sidebar.
 . At the top of the Catalog pane, click the *+* Add icon and select *Create a connection*.
 . Enter connection name: `lakebase_financial_conn`. Select *PostgreSQL* as the connection type. Click *Next*.
-. Fill in authentication details from the connection JSON:
-** *Host*: `connection.host`
+. Fill in authentication details:
+** *Host*: the Lakebase instance hostname
 ** *Port*: `5432`
-** *User*: `connection.username`
-** *Password*: `connection.password`
+** *User*: your Lakebase username
+** *Password*: the OAuth token or password
 . Click *Create connection*.
 . On the Catalog basics page:
 ** *Catalog name*: `lakebase_financial`
@@ -80,7 +44,7 @@ Open the connection JSON and copy the `host`, `username`, and `password` fields.
 ** Click *Test connection* to confirm it reaches the instance, then click *Create catalog*.
 . On the Access page, select *All workspaces have access*. Set yourself as owner. Click *Next*, then *Save*.
 
-==== Step 4: Verify the catalog is browsable
+==== Step 3: Verify the catalog is browsable
 
 Navigate to `lakebase_financial` in the Catalog pane. Open the `public` schema. You should see four tables: `companies`, `asset_managers`, `asset_manager_holdings`, and `financial_metrics`. Click any table to see column names, data types, and row count with no query written.
 

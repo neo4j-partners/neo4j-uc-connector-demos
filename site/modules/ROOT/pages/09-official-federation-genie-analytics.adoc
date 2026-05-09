@@ -217,10 +217,8 @@ Together they show what a database looks like once it becomes a first-class citi
 
 == Pre-demo Checklist
 
-* [ ] `.env` configured in `deploy-lakebase/` with project name and profile
-* [ ] `./deploy-lakebase/deploy.py deploy` run successfully; connection JSON present in `deploy-lakebase/`
-* [ ] `./deploy-lakebase/test_lakebase.py` run successfully; row counts confirmed in output
-* [ ] OAuth token refreshed within the hour before the demo: `./deploy-lakebase/deploy.py refresh`
+* [ ] Lakebase instance provisioned with the four financial tables loaded (`companies`, `asset_managers`, `asset_manager_holdings`, `financial_metrics`)
+* [ ] OAuth token (or password) for the Lakebase instance valid for the duration of the demo
 * [ ] `lakebase_financial` foreign catalog visible in Catalog Explorer with all four tables; Sample Data tab loads rows
 * [ ] `analysts` group created and grants applied; access denial verified with a test user
 * [ ] Portfolio Holdings dashboard published and displaying correct data

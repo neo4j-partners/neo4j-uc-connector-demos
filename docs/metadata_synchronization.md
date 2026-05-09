@@ -538,12 +538,12 @@ GET /api/2.0/lineage-tracking/external-metadata
 
 ## Related Notebooks
 
-Two notebooks in `neo4j-uc-federation-lab/` implement the approaches described above:
+Two notebooks in `examples/` implement the approaches described above:
 
 | Notebook | Implements | What It Does |
 |----------|-----------|--------------|
-| [`04_metadata_sync_delta_tables.ipynb`](../neo4j-uc-federation-lab/04_metadata_sync_delta_tables.ipynb) | Approach 3 (Materialized Delta Tables) | Discovers Neo4j labels and relationship types via `db.schema.nodeTypeProperties()` and `db.schema.relTypeProperties()`, reads each via the Spark Connector, writes as managed Delta tables (`neo4j_metadata.nodes.*` and `neo4j_metadata.relationships.*`), and verifies metadata in `INFORMATION_SCHEMA`. Requires a single-user access mode cluster with the Neo4j Spark Connector. |
-| [`05_metadata_sync_external_api.ipynb`](../neo4j-uc-federation-lab/05_metadata_sync_external_api.ipynb) | Approach 2 (External Metadata API) | Discovers the same Neo4j schema, then registers each node label and relationship type via the [External Metadata REST API](https://docs.databricks.com/api/workspace/externalmetadata). No data is copied — metadata-only registration for discoverability and lineage. Encodes Neo4j property types in the metadata properties map. Includes optional cleanup to delete registered objects. |
+| [`04_metadata_sync_delta_tables.ipynb`](../examples/04_metadata_sync_delta_tables.ipynb) | Approach 3 (Materialized Delta Tables) | Discovers Neo4j labels and relationship types via `db.schema.nodeTypeProperties()` and `db.schema.relTypeProperties()`, reads each via the Spark Connector, writes as managed Delta tables (`neo4j_metadata.nodes.*` and `neo4j_metadata.relationships.*`), and verifies metadata in `INFORMATION_SCHEMA`. Requires a single-user access mode cluster with the Neo4j Spark Connector. |
+| [`05_metadata_sync_external_api.ipynb`](../examples/05_metadata_sync_external_api.ipynb) | Approach 2 (External Metadata API) | Discovers the same Neo4j schema, then registers each node label and relationship type via the [External Metadata REST API](https://docs.databricks.com/api/workspace/externalmetadata). No data is copied — metadata-only registration for discoverability and lineage. Encodes Neo4j property types in the metadata properties map. Includes optional cleanup to delete registered objects. |
 
 ---
 

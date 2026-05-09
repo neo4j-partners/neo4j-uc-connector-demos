@@ -16,9 +16,29 @@ For a step-by-step setup and usage guide, see [neo4j_uc_jdbc_guide.md](./docs/ne
 
 ## Getting Started with the Neo4j Federated JDBC UC Connection
 
-The `getting-started/` directory contains four notebooks that walk through the Neo4j Federated JDBC UC Connection end to end. The notebooks cover loading graph data into Neo4j, establishing the Unity Catalog JDBC connection, running federated queries that join graph topology with Delta time-series data, and materializing Neo4j node labels as managed Delta tables. The dataset is an aircraft digital twin: 20 aircraft, 160 sensors, 800 flights, and 172,800 sensor readings stored across Neo4j and a Delta table.
+The `getting-started/` directory contains four notebooks that walk through the Neo4j Federated JDBC UC Connection end to end. The dataset is an aircraft digital twin: 20 aircraft, 160 sensors, 800 flights, and 172,800 sensor readings stored across Neo4j and a Delta table.
 
-For prerequisites, cluster configuration, setup steps, and an explanation of each notebook, see [getting-started/README.md](./getting-started/README.md). For the full JDBC setup reference and query patterns, see [docs/neo4j_uc_jdbc_guide.md](./docs/neo4j_uc_jdbc_guide.md).
+| Notebook | What It Covers |
+|----------|---------------|
+| `00-load-graph.ipynb` | Loads the aircraft digital twin dataset into Neo4j from CSV files in a UC Volume |
+| `01-simple-connect-test.ipynb` | Creates the UC JDBC connection and runs basic SQL queries against Neo4j |
+| `02-federated-queries.ipynb` | Federated queries joining Neo4j graph topology with Delta sensor time-series data |
+| `03-materialized-tables.ipynb` | Materializes Neo4j node labels as managed Delta tables for unrestricted SQL access |
+
+For prerequisites, cluster configuration, and setup steps, see [getting-started/README.md](./getting-started/README.md). For the full JDBC setup reference and query patterns, see [docs/neo4j_uc_jdbc_guide.md](./docs/neo4j_uc_jdbc_guide.md).
+
+---
+
+## Repository Directories
+
+| Directory | What It Is | Value |
+|-----------|------------|-------|
+| `getting-started/` | Four introductory notebooks that cover loading graph data, establishing the UC JDBC connection, running federated queries, and materializing Neo4j labels as Delta tables | The fastest path from zero to a working Neo4j–Databricks integration; self-contained and ordered for a first-time setup |
+| `examples/` | A deeper set of Databricks notebooks covering metadata sync via Delta tables and the External Metadata API, advanced federated query patterns, and performance diagnostics | Reference for integration patterns beyond the intro notebooks |
+| `validation/` | Python scripts that upload to a Databricks workspace and run as one-time jobs against a live Neo4j connection — covers data load, connection validation, federated queries, metadata sync, and advanced Spark patterns | Automated end-to-end smoke testing of the full stack (JDBC driver, UC connection, Spark connector, `remote_query`) without manual notebook execution |
+| `driver-tests/` | Local Java tests for Neo4j JDBC SQL-to-Cypher translation, runnable without Databricks | Fast local verification of SQL translation behavior before deploying to a cluster — no Spark, UC, or cloud credentials required |
+| `docs/` | Markdown reference documentation: JDBC setup guide, metadata sync design, and the Spark subquery cleaner explanation | Detailed technical reference for the patterns shown in the notebooks, including type mappings, query examples, and troubleshooting |
+| `site/` | Antora documentation site (AsciiDoc source) published to GitHub Pages | The public documentation site at [neo4j-partners.github.io/neo4j-uc-integration](https://neo4j-partners.github.io/neo4j-uc-integration) |
 
 ---
 
@@ -28,11 +48,9 @@ For prerequisites, cluster configuration, setup steps, and an explanation of eac
 
 **Federated Queries** — Once connected, Neo4j graph data (flights, airports, maintenance events, component hierarchies) can be joined with Delta lakehouse tables (sensor readings, time-series analytics) in a single Spark SQL statement. No ETL pipelines required — each database is queried where the data lives, with results combined at read time.
 
-**Metadata Synchronization** — The JDBC connection registers credentials and a driver, but does not expose Neo4j's schema as browsable UC objects. This project prototypes two approaches to metadata sync: materialized Delta tables (full data copy with Catalog Explorer, `INFORMATION_SCHEMA`, and SQL access) and the External Metadata API (metadata-only registration for discoverability and lineage). The graph-to-relational mapping is well-defined: node labels become tables in a `nodes` schema, relationship types become tables in a `relationships` schema, and properties become columns with mapped types.
+**Metadata Synchronization** — The JDBC connection registers credentials and a driver, but does not expose Neo4j's schema as browsable UC objects. This project prototypes two approaches to metadata sync: materialized Delta tables (full data copy with Catalog Explorer, `INFORMATION_SCHEMA`, and SQL access) and the External Metadata API (metadata-only registration for discoverability and lineage). The graph-to-relational mapping is well-defined: node labels become tables in a `nodes` schema, relationship types become tables in a `relationships` schema, and properties become columns with mapped types. For design details, type mappings, and implementation, see [docs/metadata_synchronization.md](./docs/metadata_synchronization.md).
 
-**Natural Language via Genie** — Neo4j data materialized as managed Delta tables becomes transparently queryable through Databricks AI/BI Genie. Users ask plain-English questions and Genie generates SQL that federates across Neo4j graph data and Delta lakehouse tables, all governed by Unity Catalog.
-
-**Proposal for First-Class Support** — The prototype demonstrates that Neo4j can be elevated from a generic JDBC bring-your-own-driver configuration to a natively supported Lakehouse Federation data source (`TYPE NEO4J`), with automatic metadata sync, table-level governance, and lineage tracking on par with currently supported sources like PostgreSQL, Snowflake, and BigQuery.
+**Natural Language via Genie** — Neo4j data materialized as managed Delta tables becomes transparently queryable through Databricks AI/BI Genie. Users ask plain-English questions and Genie generates SQL that federates across Neo4j graph data and Delta lakehouse tables, all governed by Unity Catalog. The LLM never sees Cypher and the user never writes SQL.
 
 ---
 
@@ -48,19 +66,6 @@ The integration works today through Unity Catalog's custom JDBC connection. Elev
 - **Service principal and OAuth support** — Native credential management rather than user/password stored in connection options
 
 For the full capability breakdown and trade-offs, see [docs/unlock.md](./docs/unlock.md).
-
----
-
-## Notebooks
-
-All notebooks are in `getting-started/` and should be imported to your Databricks workspace. See [getting-started/README.md](./getting-started/README.md) for prerequisites and setup instructions.
-
-| Notebook | What It Covers |
-|----------|---------------|
-| `00-load-graph.ipynb` | Loads the aircraft digital twin dataset into Neo4j from CSV files in a UC Volume |
-| `01-simple-connect-test.ipynb` | Creates the UC JDBC connection and runs basic SQL queries against Neo4j |
-| `02-federated-queries.ipynb` | Federated queries joining Neo4j graph topology with Delta sensor time-series data |
-| `03-materialized-tables.ipynb` | Materializes Neo4j node labels as managed Delta tables for unrestricted SQL access |
 
 ---
 
@@ -145,42 +150,6 @@ Enable these preview features in your Databricks workspace:
 ## SQL-to-Cypher Translation
 
 The Neo4j JDBC driver automatically translates SQL to Cypher when `enableSQLTranslation=true`. For the full translation reference, supported patterns, and examples see [docs/neo4j_uc_jdbc_guide.md](./docs/neo4j_uc_jdbc_guide.md).
-
----
-
-## Metadata Synchronization
-
-Setting up a JDBC connection lets you query Neo4j from Databricks, but it doesn't make Neo4j's schema visible in Unity Catalog. Metadata synchronization maps Neo4j's graph structure (node labels → tables, relationship types → tables, properties → columns) into Unity Catalog's three-level namespace so it can be browsed, governed, and tracked for lineage.
-
-For design details, type mappings, and implementation, see [docs/metadata_synchronization.md](./docs/metadata_synchronization.md).
-
----
-
-## Federated Agents and Genie Integration
-
-Neo4j data materialized as Delta tables becomes queryable through Databricks AI/BI Genie without any direct graph database access. Users ask natural language questions and Genie generates SQL that federates across Neo4j graph data and Delta lakehouse tables — all governed by Unity Catalog. The LLM never sees Cypher and the user never writes SQL.
-
----
-
-## Repository Structure
-
-```
-neo4j-uc-integration/
-├── README.md
-├── docs/
-│   ├── neo4j_uc_jdbc_guide.md          # JDBC setup, query patterns, troubleshooting
-│   ├── metadata_synchronization.md     # Metadata sync design and implementation
-│   └── neo4j_jdbc_cleaner.md           # Spark subquery cleaner explanation
-├── getting-started/                    # Intro notebooks (import to Databricks workspace)
-│   ├── 00-load-graph.ipynb
-│   ├── 01-simple-connect-test.ipynb
-│   ├── 02-federated-queries.ipynb
-│   └── 03-materialized-tables.ipynb
-├── neo4j-uc-federation-lab/            # Full test suite notebooks
-├── validate-federation/                # Validation scripts
-├── deploy-lakebase/                    # Lakebase deployment scripts
-└── site/                              # Antora documentation site
-```
 
 ---
 

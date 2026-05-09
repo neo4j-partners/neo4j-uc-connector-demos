@@ -19,7 +19,7 @@ spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 
 == Setup Automation
 
-The `sample-validation` directory includes scripts that automate the prerequisite steps. Run these once before creating the connection.
+The `validation/` directory includes scripts that automate the prerequisite steps. Run these once before creating the connection.
 
 === 1. Configure .env
 
@@ -41,7 +41,7 @@ cp .env.sample .env
 |Cluster ID to run scripts on (must have SafeSpark memory settings applied)
 
 |`DATABRICKS_WORKSPACE_DIR`
-|Workspace path where scripts are uploaded (e.g. `/Users/you@example.com/sample_validation`)
+|Workspace path where scripts are uploaded (e.g. `/Users/you@example.com/validation`)
 
 |`NEO4J_URI`
 |Neo4j Aura connection URI (e.g. `neo4j+s://abc123.databases.neo4j.io`)
@@ -53,7 +53,7 @@ cp .env.sample .env
 |Neo4j password
 
 |`DATABRICKS_SECRET_SCOPE`
-|Name of the Databricks secret scope to create (e.g. `sample_validation`)
+|Name of the Databricks secret scope to create (e.g. `validation`)
 
 |`UC_CATALOG`
 |Unity Catalog catalog name
@@ -94,7 +94,7 @@ After running this, the Neo4j credentials are available in Databricks scripts vi
 ----
 from databricks.sdk import WorkspaceClient
 ws = WorkspaceClient()
-password = ws.dbutils.secrets.get(scope="sample_validation", key="NEO4J_PASSWORD")
+password = ws.dbutils.secrets.get(scope="validation", key="NEO4J_PASSWORD")
 ----
 
 === 3. Upload CSV Data to the UC Volume
