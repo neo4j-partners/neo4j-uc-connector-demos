@@ -221,10 +221,10 @@ def main():
             ),
             sensor_health AS (
                 SELECT
-                    REGEXP_EXTRACT(sensor_id, '^(AC[0-9]+)', 1) AS aircraftId,
+                    REGEXP_EXTRACT(sensorId, '^(AC[0-9]+)', 1) AS aircraftId,
                     ROUND(AVG(value), 2) AS avg_reading
                 FROM {fqn}.sensor_readings
-                GROUP BY REGEXP_EXTRACT(sensor_id, '^(AC[0-9]+)', 1)
+                GROUP BY REGEXP_EXTRACT(sensorId, '^(AC[0-9]+)', 1)
             )
             SELECT
                 s.aircraftId,
@@ -291,7 +291,7 @@ def main():
         start = time.time()
         rows = rq("""SELECT COUNT(*) AS flight_count FROM Flight f
                      NATURAL JOIN DEPARTS_FROM r NATURAL JOIN Airport a
-                     GROUP BY a.code""").collect()
+                     GROUP BY a.iata""").collect()
         elapsed = (time.time() - start) * 1000
         results.record("JOIN+GROUP BY non-projected", len(rows) > 0, f"{len(rows)} groups, {elapsed:.0f}ms")
     except Exception as e:
@@ -300,9 +300,9 @@ def main():
     # Projected group key — JOIN with GROUP BY, key in SELECT
     try:
         start = time.time()
-        rows = rq("""SELECT a.code, COUNT(*) AS flight_count FROM Flight f
+        rows = rq("""SELECT a.iata, COUNT(*) AS flight_count FROM Flight f
                      NATURAL JOIN DEPARTS_FROM r NATURAL JOIN Airport a
-                     GROUP BY a.code""").collect()
+                     GROUP BY a.iata""").collect()
         elapsed = (time.time() - start) * 1000
         results.record("JOIN+GROUP BY projected", len(rows) > 0, f"{len(rows)} airports, {elapsed:.0f}ms")
     except Exception as e:

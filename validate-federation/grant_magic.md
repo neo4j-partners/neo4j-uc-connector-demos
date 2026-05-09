@@ -2,7 +2,7 @@
 
 ## The Problem
 
-`run_05_metadata_sync_api.py` registers Neo4j node labels and relationship types
+`run_04_metadata_sync_api.py` registers Neo4j node labels and relationship types
 in Unity Catalog's External Metadata API (`/api/2.0/lineage-tracking/external-metadata`).
 Every registration call failed with:
 
@@ -75,16 +75,16 @@ to issue the GRANT (either as a metastore admin or through inherited permissions
 
 ## Reusable Script
 
-`grant_external_metadata.sh` automates discovering the metastore ID and current
-user, but the actual grant runs through the workspace cluster. For a different
-user, change the principal in the SQL:
+`grant_external_metadata.sh` automates discovering the current workspace user,
+uploads a one-shot PySpark task, and runs the SQL grant through the configured
+workspace cluster. For a different user, pass the principal explicitly:
 
-```sql
-GRANT CREATE_EXTERNAL_METADATA ON METASTORE TO `other.user@example.com`;
+```bash
+./grant_external_metadata.sh other.user@example.com
 ```
 
 ## Result After Grant
 
-`run_05_metadata_sync_api.py` registered all 9 Neo4j node labels successfully
+`run_04_metadata_sync_api.py` registered all 9 Neo4j node labels successfully
 (14/15 checks passed — the only failure was cleanup/deletion, which may require
 a separate `DELETE EXTERNAL METADATA` privilege or a different API path).

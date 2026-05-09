@@ -1,0 +1,128 @@
+= Troubleshooting: Neo4j Federated JDBC UC Connection
+:description: Exact error messages, root causes, and fixes for the five failure modes in the Neo4j JDBC Databricks federation setup
+
+Five failure modes appear consistently across setup and query execution. Each has a specific error message, a root cause, and a deterministic fix.
+
+== SafeSpark Memory Exhaustion
+
+*Error:* `Connection was closed before the operation completed`
+
+The Neo4j JDBC driver loads substantially more classes during initialization than standard JDBC drivers. The SQL-to-Cypher translator requires an ANTLR grammar and parser at startup, pushing metaspace consumption past the SafeSpark sandbox default. Every connection attempt fails immediately — the driver starts initializing, the sandbox kills the JVM, and Spark surfaces a generic connection error.
+
+Add these settings to the cluster's **Advanced Options > Spark > Spark Config** and restart the cluster:
+
+[source,properties]
+----
+spark.databricks.safespark.jdbcSandbox.jvm.maxMetaspace.mib 128
+spark.databricks.safespark.jdbcSandbox.jvm.xmx.mib 300
+spark.databricks.safespark.jdbcSandbox.size.default.mib 512
+----
+
+The connection will succeed on the next attempt. This is a one-time cluster configuration, not a per-query setting.
+
+== Missing customSchema
+
+*Error:* `No column has been read prior to this call`
+
+Before executing any query, Spark's JDBC reader sends a schema probe: the original query wrapped in `SELECT * FROM (...) SPARK_GEN_SUBQ_0 WHERE 1=0`. The Spark subquery cleaner in the connector strips this wrapper before it reaches the translator. The translator converts the query to Cypher and runs it — but with `WHERE 1=0`, Neo4j returns no rows and no type information. Spark receives a schema where every column is `NullType()`, which triggers this error before the actual query runs.
+
+The fix is an explicit `customSchema` on every DataFrame API query. It bypasses inference entirely:
+
+[source,python]
+----
+# Fails: Spark sends a WHERE 1=0 probe and gets NullType() back
+df = spark.read.format("jdbc") \
+    .option("databricks.connection", "neo4j_connection") \
+    .option("query", "SELECT COUNT(*) AS cnt FROM Aircraft") \
+    .load()
+
+# Works: customSchema skips inference
+df = spark.read.format("jdbc") \
+    .option("databricks.connection", "neo4j_connection") \
+    .option("query", "SELECT COUNT(*) AS cnt FROM Aircraft") \
+    .option("customSchema", "cnt LONG") \
+    .load()
+----
+
+Column names in `customSchema` must match the aliases in the SQL query exactly. Integer counts use `LONG`, string node properties use `STRING`, floating-point values use `DOUBLE`.
+
+`remote_query()` handles schema inference internally and does not require `customSchema`.
+
+== CHAR(0) Error During Delta Materialization
+
+*Error:* `Parquet column can not be converted` or a CHAR type error (exact message varies by Databricks runtime)
+
+When JDBC reads string properties from Neo4j, some columns arrive with JDBC type `CHAR(0)` rather than `VARCHAR` or `STRING`. Delta Lake cannot write `CHAR(0)` columns. The error surfaces when calling `df.write.format("delta")`, not during the Neo4j read.
+
+Cast all columns to `STRING` before writing:
+
+[source,python]
+----
+from pyspark.sql.types import StringType
+
+df = read_neo4j(spark, cfg,
+    custom_schema="aircraftId STRING, tail_number STRING, model STRING, manufacturer STRING, operator STRING",
+    query="SELECT aircraftId, tail_number, model, manufacturer, operator FROM Aircraft",
+)
+
+# Cast every column before writing to Delta
+for col_name in df.columns:
+    df = df.withColumn(col_name, df[col_name].cast(StringType()))
+
+df.write.format("delta") \
+    .mode("overwrite") \
+    .option("overwriteSchema", "true") \
+    .saveAsTable(f"{schema}.neo4j_aircraft")
+----
+
+Casting everything to `STRING` is safe for node tables whose properties are string-dominant. Columns explicitly typed as `LONG` or `DOUBLE` in `customSchema` are not affected by the `CHAR(0)` issue, but the blanket cast is easier to maintain than tracking which columns are affected per table.
+
+For the full materialization workflow including all node tables, see xref:materialization.adoc[Delta Materialization].
+
+== LIKE Pattern Matching in remote_query()
+
+*Pattern:* `WHERE col LIKE 'prefix%'` inside `remote_query()`
+
+Databricks strips quotes from LIKE string literals before the query reaches the JDBC driver. The query arrives at Neo4j as `WHERE col LIKE prefix%` — syntactically invalid in both SQL and Cypher.
+
+Use a `FORCE_CYPHER` hint with `STARTS WITH`, `ENDS WITH`, or `CONTAINS` instead:
+
+[source,sql]
+----
+-- Breaks: Databricks strips quotes from the LIKE pattern
+SELECT * FROM remote_query(
+    'neo4j_connection',
+    query => 'SELECT manufacturer FROM Aircraft WHERE manufacturer LIKE ''B%'''
+)
+
+-- Works: use FORCE_CYPHER with a Cypher string predicate
+SELECT * FROM remote_query(
+    'neo4j_connection',
+    query => '/*+ FORCE_CYPHER */ MATCH (n:Aircraft) WHERE n.manufacturer STARTS WITH ''B'' RETURN n.manufacturer AS manufacturer'
+)
+----
+
+This limitation is in Databricks's `remote_query()` SQL parsing, not in the Neo4j JDBC driver. Queries sent through the PySpark DataFrame API (`.option("query", ...)`) are not affected — LIKE works there.
+
+== GROUP BY Returns 0 Rows on Warm Clusters
+
+*Pattern:* A `GROUP BY` query inside `remote_query()` returns 0 rows after running correctly the first time
+
+A caching issue in `remote_query()` can return an empty result set for GROUP BY queries on warm clusters. Adding `HAVING COUNT(*) > 0` forces result re-evaluation and bypasses the empty cache:
+
+[source,sql]
+----
+-- Intermittently returns 0 rows on warm clusters
+SELECT * FROM remote_query(
+    'neo4j_connection',
+    query => 'SELECT operator, COUNT(*) AS cnt FROM Flight GROUP BY operator'
+)
+
+-- Add HAVING COUNT(*) > 0 for consistent results
+SELECT * FROM remote_query(
+    'neo4j_connection',
+    query => 'SELECT operator, COUNT(*) AS cnt FROM Flight GROUP BY operator HAVING COUNT(*) > 0'
+)
+----
+
+This applies only to `remote_query()`. DataFrame API queries run fresh each time and are not affected.

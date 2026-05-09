@@ -38,7 +38,7 @@ spark.conf.set("neo4j.database", cfg["neo4j_database"])
 vr = ValidationResults()
 
 print("=" * 60)
-print("validate-federation: 04 Metadata Sync (Delta Tables)")
+print("validate-federation: 03 Metadata Sync (Delta Tables)")
 print("=" * 60)
 print(f"  Neo4j:    {cfg['neo4j_host']}")
 print(f"  Target:   {TARGET_CATALOG}")

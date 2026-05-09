@@ -59,18 +59,18 @@ def main():
         )
 
         sensor_stats = spark.sql(f"""
-            SELECT sensor_id,
+            SELECT sensorId,
                    COUNT(*) AS reading_count,
                    ROUND(AVG(value), 2) AS avg_value,
                    ROUND(MIN(value), 2) AS min_value,
                    ROUND(MAX(value), 2) AS max_value
             FROM {fqn}.sensor_readings
-            GROUP BY sensor_id
+            GROUP BY sensorId
         """)
 
         result = (
             sensor_topology
-            .join(sensor_stats, sensor_topology.sensorId == sensor_stats.sensor_id, "left")
+            .join(sensor_stats, sensor_topology.sensorId == sensor_stats.sensorId, "left")
             .select("aircraftId", "model", "systemType", "sensorId", "reading_count", "avg_value")
         )
         result.orderBy("aircraftId", "systemType").show(10, truncate=False)
@@ -103,12 +103,12 @@ def main():
             query="SELECT aircraftId, COUNT(*) AS maint_count FROM MaintenanceEvent GROUP BY aircraftId",
         )
 
-        # Delta: average sensor value per aircraft (derived from sensor_id prefix)
+        # Delta: average sensor value per aircraft (derived from sensorId prefix)
         aircraft_sensor_health = spark.sql(f"""
-            SELECT REGEXP_EXTRACT(sensor_id, '^(AC[0-9]+)', 1) AS aircraftId,
+            SELECT REGEXP_EXTRACT(sensorId, '^(AC[0-9]+)', 1) AS aircraftId,
                    ROUND(AVG(value), 2) AS avg_sensor_reading
             FROM {fqn}.sensor_readings
-            GROUP BY REGEXP_EXTRACT(sensor_id, '^(AC[0-9]+)', 1)
+            GROUP BY REGEXP_EXTRACT(sensorId, '^(AC[0-9]+)', 1)
         """)
 
         result = df_by_aircraft.join(aircraft_sensor_health, "aircraftId", "left")

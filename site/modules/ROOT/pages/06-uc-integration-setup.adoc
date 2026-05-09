@@ -17,6 +17,97 @@ spark.databricks.safespark.jdbcSandbox.jvm.xmx.mib 300
 spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 ----
 
+== Setup Automation
+
+The `sample-validation` directory includes scripts that automate the prerequisite steps. Run these once before creating the connection.
+
+=== 1. Configure .env
+
+Copy `.env.sample` to `.env` and fill in the values:
+
+[source,bash]
+----
+cp .env.sample .env
+----
+
+[cols="2,3"]
+|===
+|Key |Description
+
+|`DATABRICKS_PROFILE`
+|CLI profile name from `~/.databrickscfg`
+
+|`DATABRICKS_CLUSTER_ID`
+|Cluster ID to run scripts on (must have SafeSpark memory settings applied)
+
+|`DATABRICKS_WORKSPACE_DIR`
+|Workspace path where scripts are uploaded (e.g. `/Users/you@example.com/sample_validation`)
+
+|`NEO4J_URI`
+|Neo4j Aura connection URI (e.g. `neo4j+s://abc123.databases.neo4j.io`)
+
+|`NEO4J_USERNAME`
+|Neo4j username (default: `neo4j`)
+
+|`NEO4J_PASSWORD`
+|Neo4j password
+
+|`DATABRICKS_SECRET_SCOPE`
+|Name of the Databricks secret scope to create (e.g. `sample_validation`)
+
+|`UC_CATALOG`
+|Unity Catalog catalog name
+
+|`UC_SCHEMA`
+|Schema name (default: `neo4j_getting_started`)
+
+|`UC_VOLUME`
+|Volume name for CSV data files (default: `aircraft_data`)
+
+|`JDBC_JAR_PATH`
+|Full UC Volume path to the connector JAR (e.g. `/Volumes/catalog/schema/jars/neo4j-unity-catalog-connector.jar`)
+
+|`UC_CONNECTION_NAME`
+|Name for the JDBC UC connection (default: `sample_neo4j_jdbc_connection`)
+
+|===
+
+=== 2. Create the Databricks Secret Scope
+
+`create_secrets.sh` reads `NEO4J_USERNAME` and `NEO4J_PASSWORD` from `.env`, creates the secret scope if it doesn't exist, and stores the credentials:
+
+[source,bash]
+----
+./create_secrets.sh
+----
+
+The script uses `DATABRICKS_PROFILE` from `.env` by default. Pass a profile name as an argument to override:
+
+[source,bash]
+----
+./create_secrets.sh my-profile
+----
+
+After running this, the Neo4j credentials are available in Databricks scripts via:
+
+[source,python]
+----
+from databricks.sdk import WorkspaceClient
+ws = WorkspaceClient()
+password = ws.dbutils.secrets.get(scope="sample_validation", key="NEO4J_PASSWORD")
+----
+
+=== 3. Upload CSV Data to the UC Volume
+
+`upload_data.sh` uploads the aircraft digital twin CSV files from `getting-started/data/aircraft_digital_twin_data/` to the UC Volume path defined by `UC_CATALOG`, `UC_SCHEMA`, and `UC_VOLUME` in `.env`:
+
+[source,bash]
+----
+./upload_data.sh
+----
+
+This writes 17 CSV files to `/Volumes/<catalog>/<schema>/<volume>/`. The JDBC JAR must also be in a UC Volume before creating the connection — upload it manually to the path set in `JDBC_JAR_PATH`.
+
 == Prerequisites
 
 Before creating the connection, three things need to be in place.

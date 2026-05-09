@@ -60,7 +60,15 @@ def _load_secrets() -> None:
 
 def get_config() -> dict:
     """Build config dict from environment variables set by inject_params()."""
-    neo4j_host = os.environ["NEO4J_HOST"]
+    neo4j_uri = os.environ.get("NEO4J_URI")
+    neo4j_host = os.environ.get("NEO4J_HOST", "")
+    if neo4j_uri:
+        neo4j_host = neo4j_uri.replace("neo4j+s://", "").replace("neo4j://", "")
+    elif not neo4j_host:
+        raise KeyError("NEO4J_HOST or NEO4J_URI")
+    elif neo4j_host.startswith(("neo4j+s://", "neo4j://")):
+        neo4j_host = neo4j_host.replace("neo4j+s://", "").replace("neo4j://", "")
+
     neo4j_username = os.environ.get("NEO4J_USERNAME", "neo4j")
     neo4j_password = os.environ["NEO4J_PASSWORD"]
     neo4j_database = os.environ.get("NEO4J_DATABASE", "neo4j")

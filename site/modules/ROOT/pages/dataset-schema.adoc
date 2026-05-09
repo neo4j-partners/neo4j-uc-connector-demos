@@ -1,0 +1,195 @@
+= Aircraft Digital Twin: Dataset Schema
+:description: Node types, relationship types, property names, expected row counts, and CSV file inventory for the aircraft digital twin graph used throughout this guide
+
+The aircraft digital twin dataset models a fleet of 20 commercial aircraft operating across 12 airports. The graph connects aircraft maintenance history, flight operations, and sensor topology — this structure is what makes the federated queries throughout this guide possible. When a query joins Neo4j maintenance counts with Delta sensor readings, it is traversing this graph on the Neo4j side and joining on `aircraftId` or `sensorId` on the Delta side.
+
+== Node Types
+
+[cols="2,1,4,2"]
+|===
+|Label |Count |Properties |Primary Key
+
+|`Aircraft`
+|20
+|`aircraftId`, `tail_number`, `icao24`, `model`, `manufacturer`, `operator`
+|`aircraftId`
+
+|`Airport`
+|12
+|`airportId`, `name`, `city`, `country`, `iata`, `icao`, `lat`, `lon`
+|`airportId`
+
+|`System`
+|80
+|`systemId`, `aircraftId`, `type`, `name`
+|`systemId`
+
+|`Component`
+|320
+|`componentId`, `systemId`, `type`, `name`
+|`componentId`
+
+|`Sensor`
+|160
+|`sensorId`, `systemId`, `type`, `name`, `unit`
+|`sensorId`
+
+|`Flight`
+|800
+|`flightId`, `flight_number`, `aircraftId`, `operator`, `origin`, `destination`, `scheduled_departure`, `scheduled_arrival`
+|`flightId`
+
+|`MaintenanceEvent`
+|300
+|`eventId`, `componentId`, `systemId`, `aircraftId`, `fault`, `severity`, `reported_at`, `corrective_action`
+|`eventId`
+
+|`Delay`
+|514
+|`delayId`, `flightId`, `cause`, `minutes`
+|`delayId`
+
+|===
+
+The `severity` property on `MaintenanceEvent` takes values `CRITICAL`, `WARNING`, and `INFO`. The `minutes` property on `Delay` is an integer. The `iata` property on `Airport` is the join key used when matching flight origin/destination codes to airport nodes.
+
+== Relationship Types
+
+[cols="2,3"]
+|===
+|Type |Traversal Pattern
+
+|`HAS_SYSTEM`
+|`(Aircraft)-[:HAS_SYSTEM]->(System)`
+
+|`HAS_COMPONENT`
+|`(System)-[:HAS_COMPONENT]->(Component)`
+
+|`HAS_SENSOR`
+|`(System)-[:HAS_SENSOR]->(Sensor)`
+
+|`OPERATES_FLIGHT`
+|`(Aircraft)-[:OPERATES_FLIGHT]->(Flight)`
+
+|`DEPARTS_FROM`
+|`(Flight)-[:DEPARTS_FROM]->(Airport)`
+
+|`ARRIVES_AT`
+|`(Flight)-[:ARRIVES_AT]->(Airport)`
+
+|`HAS_DELAY`
+|`(Flight)-[:HAS_DELAY]->(Delay)`
+
+|`HAS_EVENT`
+|`(Component)-[:HAS_EVENT]->(MaintenanceEvent)`
+
+|===
+
+In the JDBC SQL-to-Cypher translator, relationship types become the middle "table" in a `NATURAL JOIN`. The query `FROM Flight f NATURAL JOIN DEPARTS_FROM r NATURAL JOIN Airport a` translates to the Cypher pattern `(f:Flight)-[:DEPARTS_FROM]->(a:Airport)`.
+
+== Delta Table: sensor_readings
+
+Sensor time-series data is not stored in Neo4j. It lives as a Delta table in the Unity Catalog schema alongside the materialized graph tables and is the primary join target in the federated analytics queries.
+
+[cols="2,1,4"]
+|===
+|Column |Type |Description
+
+|`reading_id`
+|STRING
+|Unique identifier for the reading
+
+|`sensor_id`
+|STRING
+|Foreign key matching `Sensor.sensorId` in the graph
+
+|`timestamp`
+|TIMESTAMP
+|Reading timestamp
+
+|`value`
+|DOUBLE
+|Sensor measurement in the sensor's native unit
+
+|===
+
+Expected row count: 172,800 (160 sensors × 1,080 readings each). This table is loaded from `nodes_readings.csv` by `run_01_connect_test.py` using `read_files()` directly into Delta — it does not pass through Neo4j.
+
+== Indexes
+
+The graph loader creates one index per node type on its primary key property:
+
+[source,cypher]
+----
+CREATE INDEX aircraft_id IF NOT EXISTS FOR (n:Aircraft) ON (n.aircraftId)
+CREATE INDEX airport_id  IF NOT EXISTS FOR (n:Airport)  ON (n.airportId)
+CREATE INDEX system_id   IF NOT EXISTS FOR (n:System)   ON (n.systemId)
+CREATE INDEX component_id IF NOT EXISTS FOR (n:Component) ON (n.componentId)
+CREATE INDEX sensor_id   IF NOT EXISTS FOR (n:Sensor)   ON (n.sensorId)
+CREATE INDEX flight_id   IF NOT EXISTS FOR (n:Flight)   ON (n.flightId)
+CREATE INDEX delay_id    IF NOT EXISTS FOR (n:Delay)    ON (n.delayId)
+CREATE INDEX maint_id    IF NOT EXISTS FOR (n:MaintenanceEvent) ON (n.eventId)
+----
+
+These indexes support the `MATCH` lookups in the relationship loading queries, where each edge CSV row is resolved to its start and end nodes by primary key.
+
+== CSV File Inventory
+
+The dataset ships as 17 CSV files uploaded to a UC Volume by `upload_data.sh`. Node files follow Neo4j import format: the primary key column header is `:ID(Label)`, relationship source is `:START_ID(Label)`, and target is `:END_ID(Label)`. The `data_utils.csv_rows()` function normalizes these headers to `id`, `start_id`, and `end_id` before passing rows to Cypher.
+
+[cols="2,3"]
+|===
+|File |Contents
+
+|`nodes_aircraft.csv`
+|20 Aircraft nodes
+
+|`nodes_airports.csv`
+|12 Airport nodes
+
+|`nodes_systems.csv`
+|80 System nodes
+
+|`nodes_components.csv`
+|320 Component nodes
+
+|`nodes_sensors.csv`
+|160 Sensor nodes
+
+|`nodes_flights.csv`
+|800 Flight nodes
+
+|`nodes_maintenance.csv`
+|300 MaintenanceEvent nodes
+
+|`nodes_delays.csv`
+|514 Delay nodes
+
+|`nodes_readings.csv`
+|172,800 sensor readings (loaded as Delta, not into Neo4j)
+
+|`rels_aircraft_system.csv`
+|HAS_SYSTEM edges
+
+|`rels_system_component.csv`
+|HAS_COMPONENT edges
+
+|`rels_system_sensor.csv`
+|HAS_SENSOR edges
+
+|`rels_aircraft_flight.csv`
+|OPERATES_FLIGHT edges
+
+|`rels_flight_departure.csv`
+|DEPARTS_FROM edges
+
+|`rels_flight_arrival.csv`
+|ARRIVES_AT edges
+
+|`rels_flight_delay.csv`
+|HAS_DELAY edges
+
+|`rels_component_event.csv`
+|HAS_EVENT edges
+
+|===

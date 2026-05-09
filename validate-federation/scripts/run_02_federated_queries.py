@@ -40,7 +40,14 @@ EXPECTED_TABLES = {
     "aircraft": 20,
     "systems": 80,
     "sensors": 160,
-    "sensor_readings": 300000,  # ~345,600 expected
+    "sensor_readings": 172800,
+}
+
+EXPECTED_COLUMNS = {
+    "aircraft": {"aircraftId", "tail_number", "icao24", "model", "manufacturer", "operator"},
+    "systems": {"systemId", "aircraftId", "type", "name"},
+    "sensors": {"sensorId", "systemId", "type", "name", "unit"},
+    "sensor_readings": {"readingId", "sensorId", "ts", "value"},
 }
 
 for table, min_rows in EXPECTED_TABLES.items():
@@ -49,6 +56,18 @@ for table, min_rows in EXPECTED_TABLES.items():
         vr.record(f"Delta table: {table}", cnt >= min_rows, f"{cnt:,} rows")
     except Exception as e:
         vr.record(f"Delta table: {table}", False, str(e)[:120])
+
+for table, expected in EXPECTED_COLUMNS.items():
+    try:
+        actual = set(spark.table(table).columns)
+        missing = sorted(expected - actual)
+        vr.record(
+            f"Delta schema: {table}",
+            not missing,
+            "canonical camelCase columns" if not missing else f"missing: {', '.join(missing)}",
+        )
+    except Exception as e:
+        vr.record(f"Delta schema: {table}", False, str(e)[:120])
 
 # ============================================================================
 # Section 2: Verify Neo4j via UC JDBC (remote_query)
@@ -123,7 +142,7 @@ try:
                 AVG(CASE WHEN sen.type = 'N1Speed' THEN r.value END) AS avg_n1_speed,
                 COUNT(*) AS total_readings
             FROM sensor_readings r
-            JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
+            JOIN sensors sen ON r.sensorId = sen.sensorId
         ) sensor
     """)
     rows = result.collect()
@@ -183,30 +202,30 @@ try:
     t0 = time.time()
     result = spark.sql("""
         WITH aircraft_ref AS (
-            SELECT `:ID(Aircraft)` AS aircraft_id, tail_number, model, manufacturer, operator
+            SELECT aircraftId, tail_number, model, manufacturer, operator
             FROM aircraft
         ),
         sensor_health AS (
             SELECT
-                sys.aircraft_id,
+                sys.aircraftId,
                 ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
                 ROUND(MAX(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS max_egt,
                 ROUND(AVG(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS avg_vibration,
                 ROUND(MAX(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS max_vibration
             FROM sensor_readings r
-            JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-            JOIN systems sys ON sen.system_id = sys.`:ID(System)`
-            GROUP BY sys.aircraft_id
+            JOIN sensors sen ON r.sensorId = sen.sensorId
+            JOIN systems sys ON sen.systemId = sys.systemId
+            GROUP BY sys.aircraftId
         ),
         maintenance_summary AS (
             SELECT
-                aircraft_id,
+                aircraftId,
                 COUNT(*) AS total_events,
                 SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical,
                 SUM(CASE WHEN severity = 'MAJOR' THEN 1 ELSE 0 END) AS major,
                 SUM(CASE WHEN severity = 'MINOR' THEN 1 ELSE 0 END) AS minor
             FROM neo4j_maintenance
-            GROUP BY aircraft_id
+            GROUP BY aircraftId
         )
         SELECT
             a.tail_number, a.model, a.operator,
@@ -217,8 +236,8 @@ try:
             s.avg_egt AS avg_egt_c, s.max_egt AS max_egt_c,
             s.avg_vibration AS avg_vib_ips, s.max_vibration AS max_vib_ips
         FROM aircraft_ref a
-        LEFT JOIN maintenance_summary m ON a.aircraft_id = m.aircraft_id
-        LEFT JOIN sensor_health s ON a.aircraft_id = s.aircraft_id
+        LEFT JOIN maintenance_summary m ON a.aircraftId = m.aircraftId
+        LEFT JOIN sensor_health s ON a.aircraftId = s.aircraftId
         ORDER BY m.total_events DESC NULLS LAST
     """)
     cnt = result.count()
@@ -236,37 +255,37 @@ try:
     t0 = time.time()
     result = spark.sql("""
         WITH aircraft_ref AS (
-            SELECT `:ID(Aircraft)` AS aircraft_id, tail_number, model, operator
+            SELECT aircraftId, tail_number, model, operator
             FROM aircraft
         ),
         flight_activity AS (
             SELECT
-                aircraft_id,
+                aircraftId,
                 COUNT(*) AS total_flights,
                 COUNT(DISTINCT origin) AS unique_origins,
                 COUNT(DISTINCT destination) AS unique_destinations
             FROM neo4j_flights
-            GROUP BY aircraft_id
+            GROUP BY aircraftId
         ),
         engine_health AS (
             SELECT
-                sys.aircraft_id,
+                sys.aircraftId,
                 ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
                 ROUND(AVG(CASE WHEN sen.type = 'FuelFlow' THEN r.value END), 2) AS avg_fuel_flow,
                 ROUND(AVG(CASE WHEN sen.type = 'N1Speed' THEN r.value END), 0) AS avg_n1_speed
             FROM sensor_readings r
-            JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-            JOIN systems sys ON sen.system_id = sys.`:ID(System)`
+            JOIN sensors sen ON r.sensorId = sen.sensorId
+            JOIN systems sys ON sen.systemId = sys.systemId
             WHERE sys.type = 'Engine'
-            GROUP BY sys.aircraft_id
+            GROUP BY sys.aircraftId
         )
         SELECT
             a.tail_number, a.model, a.operator,
             f.total_flights, f.unique_origins AS origins, f.unique_destinations AS destinations,
             e.avg_egt AS avg_egt_c, e.avg_fuel_flow AS fuel_kgs, e.avg_n1_speed AS n1_rpm
         FROM aircraft_ref a
-        JOIN flight_activity f ON a.aircraft_id = f.aircraft_id
-        JOIN engine_health e ON a.aircraft_id = e.aircraft_id
+        JOIN flight_activity f ON a.aircraftId = f.aircraftId
+        JOIN engine_health e ON a.aircraftId = e.aircraftId
         ORDER BY f.total_flights DESC
     """)
     cnt = result.count()
@@ -290,31 +309,31 @@ try:
     t0 = time.time()
     result = spark.sql("""
         WITH aircraft_ref AS (
-            SELECT `:ID(Aircraft)` AS aircraft_id, tail_number, model, manufacturer, operator
+            SELECT aircraftId, tail_number, model, manufacturer, operator
             FROM aircraft
         ),
         sensor_stats AS (
             SELECT
-                sys.aircraft_id,
+                sys.aircraftId,
                 ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
                 ROUND(AVG(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS avg_vib,
                 ROUND(AVG(CASE WHEN sen.type = 'FuelFlow' THEN r.value END), 2) AS avg_fuel,
                 COUNT(*) AS reading_count
             FROM sensor_readings r
-            JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-            JOIN systems sys ON sen.system_id = sys.`:ID(System)`
-            GROUP BY sys.aircraft_id
+            JOIN sensors sen ON r.sensorId = sen.sensorId
+            JOIN systems sys ON sen.systemId = sys.systemId
+            GROUP BY sys.aircraftId
         ),
         maint AS (
-            SELECT aircraft_id, COUNT(*) AS events,
+            SELECT aircraftId, COUNT(*) AS events,
                    SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical
             FROM neo4j_maintenance
-            GROUP BY aircraft_id
+            GROUP BY aircraftId
         ),
         flights AS (
-            SELECT aircraft_id, COUNT(*) AS flight_count
+            SELECT aircraftId, COUNT(*) AS flight_count
             FROM neo4j_flights
-            GROUP BY aircraft_id
+            GROUP BY aircraftId
         )
         SELECT
             a.tail_number, a.model, a.operator,
@@ -324,9 +343,9 @@ try:
             s.avg_egt AS egt_c, s.avg_vib AS vib_ips, s.avg_fuel AS fuel_kgs,
             s.reading_count AS readings
         FROM aircraft_ref a
-        LEFT JOIN flights f ON a.aircraft_id = f.aircraft_id
-        LEFT JOIN maint m ON a.aircraft_id = m.aircraft_id
-        LEFT JOIN sensor_stats s ON a.aircraft_id = s.aircraft_id
+        LEFT JOIN flights f ON a.aircraftId = f.aircraftId
+        LEFT JOIN maint m ON a.aircraftId = m.aircraftId
+        LEFT JOIN sensor_stats s ON a.aircraftId = s.aircraftId
         ORDER BY COALESCE(m.critical, 0) DESC, COALESCE(m.events, 0) DESC
     """)
     cnt = result.count()

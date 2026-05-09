@@ -1,5 +1,44 @@
 # Unity Catalog Metadata Synchronization for Neo4j
 
+## Why Add Neo4j Metadata to Unity Catalog?
+
+Adding Neo4j metadata to Unity Catalog gives UC visibility into graph assets
+that are not stored as Delta tables. It makes Neo4j labels, relationship types,
+property names, and source references discoverable in the same governed catalog
+plane as lakehouse assets.
+
+This provides:
+
+- **Discoverability:** Unity Catalog can show that Neo4j labels such as
+  `Aircraft`, `Flight`, and `Sensor`, and relationship types such as
+  `HAS_SENSOR` and `OPERATES_FLIGHT`, exist.
+- **Governance surface:** External graph entities can carry ownership,
+  descriptions, schema shape, property names, and source URLs.
+- **Lineage readiness:** Downstream Databricks assets can reference or relate to
+  external graph entities in Unity Catalog's governance model.
+- **No data copy:** External Metadata registration records schema-level facts
+  only. It does not materialize, duplicate, or move Neo4j data.
+- **Common catalog plane:** Teams using Unity Catalog as their governed
+  inventory can see lakehouse tables and external graph entities in one place.
+
+## What This Proves
+
+The metadata synchronization validation proves that:
+
+- Databricks jobs can discover live Neo4j schema from the graph.
+- Neo4j node labels and relationship types can be represented in Unity Catalog
+  External Metadata.
+- `CREATE_EXTERNAL_METADATA` on the metastore is sufficient for registration.
+- The workflow can be automated from `.env`: secrets, grant, upload, and
+  validation jobs.
+- Unity Catalog can list and verify registered external graph metadata after
+  creation.
+
+It does **not** prove query federation by itself. Query federation is validated
+separately by the JDBC and `remote_query()` validation scripts. Metadata
+synchronization proves the governance and catalog registration side of the Neo4j
+and Unity Catalog integration.
+
 ## What Is Metadata Synchronization?
 
 When Databricks refers to "Unity Catalog metadata synchronization," they mean making the schema structure of an external data source (Neo4j) visible as first-class objects within Unity Catalog's three-level namespace (`catalog.schema.table`). This enables:

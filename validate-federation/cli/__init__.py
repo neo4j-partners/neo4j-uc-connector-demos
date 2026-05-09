@@ -10,4 +10,5 @@ runner = Runner(
     run_name_prefix="validate_federation",
     secret_keys=SECRET_KEYS,
     scripts_dir="scripts",
+    cli_command="uv run python -m cli",
 )

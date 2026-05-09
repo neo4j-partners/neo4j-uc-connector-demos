@@ -81,7 +81,7 @@ def main():
                     ROUND(AVG(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS avg_vibration,
                     ROUND(MAX(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS max_vibration
                 FROM {fqn}.sensor_readings r
-                JOIN {fqn}.neo4j_sensors sen ON r.sensor_id = sen.sensorId
+                JOIN {fqn}.neo4j_sensors sen ON r.sensorId = sen.sensorId
                 JOIN {fqn}.neo4j_systems  sys ON sen.systemId = sys.systemId
                 GROUP BY sys.aircraftId
             )

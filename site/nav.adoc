@@ -1,4 +1,5 @@
 * xref:index.adoc[Home]
+* xref:dataset-schema.adoc[Dataset Schema]
 * xref:01-verify-data-sources.adoc[Query 1: Verify Data Sources]
 * xref:02-fleet-summary.adoc[Query 2: Fleet Summary]
 * xref:03-sensor-maintenance-correlation.adoc[Query 3: Sensor + Maintenance]
@@ -8,5 +9,7 @@
 * xref:07-example-use-cases.adoc[Example Use Cases]
 * xref:sql-reference.adoc[SQL Reference]
 * xref:06-uc-integration-setup.adoc[Deep Dive: UC Integration Setup]
+* xref:materialization.adoc[Delta Materialization]
+* xref:troubleshooting.adoc[Troubleshooting]
 * xref:08-official-federation-catalog-governance.adoc[What's Next: Catalog & Governance]
 * xref:09-official-federation-genie-analytics.adoc[What's Next: Genie & AI/BI]

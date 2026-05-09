@@ -238,7 +238,7 @@ def main():
             FROM {fqn}.neo4j_aircraft a
             LEFT JOIN {fqn}.neo4j_maintenance_events m ON a.aircraftId = m.aircraftId
             LEFT JOIN {fqn}.neo4j_sensors s ON s.sensorId LIKE CONCAT(a.aircraftId, '-%')
-            LEFT JOIN {fqn}.sensor_readings r ON r.sensor_id = s.sensorId
+            LEFT JOIN {fqn}.sensor_readings r ON r.sensorId = s.sensorId
             GROUP BY a.aircraftId, a.model, a.operator
             ORDER BY critical_events DESC, maintenance_events DESC
         """)
@@ -274,12 +274,12 @@ def main():
         df = spark.sql(f"""
             SELECT sys.type AS system_type,
                    COUNT(DISTINCT s.sensorId) AS sensor_count,
-                   COUNT(r.reading_id) AS total_readings,
+                   COUNT(r.readingId) AS total_readings,
                    ROUND(AVG(r.value), 2) AS avg_reading,
                    ROUND(STDDEV(r.value), 2) AS stddev_reading
             FROM {fqn}.neo4j_sensors s
             JOIN {fqn}.neo4j_systems sys ON s.systemId = sys.systemId
-            JOIN {fqn}.sensor_readings r ON r.sensor_id = s.sensorId
+            JOIN {fqn}.sensor_readings r ON r.sensorId = s.sensorId
             GROUP BY sys.type
             ORDER BY total_readings DESC
         """)

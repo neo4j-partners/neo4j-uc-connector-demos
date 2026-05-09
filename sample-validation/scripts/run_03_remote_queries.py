@@ -147,11 +147,11 @@ def main():
                               GROUP BY aircraftId')
             ),
             delta_sensor_health AS (
-                SELECT REGEXP_EXTRACT(sensor_id, '^(AC[0-9]+)', 1) AS aircraftId,
+                SELECT REGEXP_EXTRACT(sensorId, '^(AC[0-9]+)', 1) AS aircraftId,
                        ROUND(AVG(value), 2) AS avg_sensor_reading,
                        COUNT(*) AS reading_count
                 FROM {fqn}.sensor_readings
-                GROUP BY REGEXP_EXTRACT(sensor_id, '^(AC[0-9]+)', 1)
+                GROUP BY REGEXP_EXTRACT(sensorId, '^(AC[0-9]+)', 1)
             )
             SELECT
                 s.aircraftId,

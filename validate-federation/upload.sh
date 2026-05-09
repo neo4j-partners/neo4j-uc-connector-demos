@@ -10,11 +10,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$SCRIPT_DIR/.uv-cache}"
 
 if [[ "${1:-}" == "--all" ]]; then
-    for f in scripts/*.py; do
-        uv run python -m cli upload "$(basename "$f")"
-    done
+    uv run python -m cli upload --all
 else
-    uv run python -m cli upload "${1:-test_hello.py}"
+    if [[ $# -eq 0 ]]; then
+        set -- test_hello.py
+    fi
+    uv run python -m cli upload "$@"
 fi

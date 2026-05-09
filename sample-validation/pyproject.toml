@@ -2,9 +2,9 @@
 name = "sample-validation"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = []
-
-[project.optional-dependencies]
-cli = [
-    "databricks-job-runner>=0.4.2",
+dependencies = [
+    "databricks-job-runner==0.4.8",
 ]
+
+[tool.uv.sources]
+databricks-job-runner = { path = "../../databricks-job-runner", editable = true }
