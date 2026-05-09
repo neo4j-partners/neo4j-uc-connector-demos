@@ -59,7 +59,7 @@ NOTE: The Neo4j JDBC driver requires additional memory for class loading in the 
 
 == The Demo: Aircraft Digital Twin
 
-To demonstrate federated querying in practice, this guide uses a synthetic aerospace IoT dataset: an https://github.com/neo4j-field/databricks-neo4j-mcp-demo/tree/main/aircraft_digital_twin_data[aircraft digital twin] modeling a fleet of 20 aircraft over 90 days of operations.
+To demonstrate federated querying in practice, this guide uses a synthetic aerospace IoT dataset: an https://github.com/neo4j-field/databricks-neo4j-mcp-demo/tree/main/aircraft_digital_twin_data[aircraft digital twin] modeling a fleet of 20 aircraft over 45 days of operations.
 
 The data is split across two databases, each optimized for what it does best:
 
@@ -68,7 +68,7 @@ The data is split across two databases, each optimized for what it does best:
 |Database |Data |Why
 
 |**Databricks Delta Lakehouse**
-|Sensor telemetry (345,600 readings), aircraft metadata, system and sensor catalogs
+|Sensor telemetry (172,800 readings), aircraft metadata, system and sensor catalogs
 |High-volume time-series analytics including aggregations, trend analysis, and anomaly detection over millions of rows
 
 |**Neo4j Knowledge Graph**

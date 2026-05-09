@@ -31,30 +31,30 @@ neo4j_maintenance.createOrReplaceTempView("neo4j_maintenance")
 [source,sql]
 ----
 WITH aircraft_ref AS (
-    SELECT `:ID(Aircraft)` AS aircraft_id, tail_number, model, manufacturer, operator
+    SELECT aircraftId, tail_number, model, manufacturer, operator
     FROM aircraft
 ),
 sensor_health AS (
     SELECT
-        sys.aircraft_id,
+        sys.aircraftId,
         ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
         ROUND(MAX(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS max_egt,
         ROUND(AVG(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS avg_vibration,
         ROUND(MAX(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS max_vibration
     FROM sensor_readings r
-    JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-    JOIN systems sys ON sen.system_id = sys.`:ID(System)`
-    GROUP BY sys.aircraft_id
+    JOIN sensors sen ON r.sensorId = sen.sensorId
+    JOIN systems sys ON sen.systemId = sys.systemId
+    GROUP BY sys.aircraftId
 ),
 maintenance_summary AS (
     SELECT
-        aircraft_id,
+        aircraftId,
         COUNT(*) AS total_events,
         SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical,
         SUM(CASE WHEN severity = 'MAJOR' THEN 1 ELSE 0 END) AS major,
         SUM(CASE WHEN severity = 'MINOR' THEN 1 ELSE 0 END) AS minor
     FROM neo4j_maintenance
-    GROUP BY aircraft_id
+    GROUP BY aircraftId
 )
 SELECT
     a.tail_number,
@@ -69,8 +69,8 @@ SELECT
     s.avg_vibration AS avg_vib_ips,
     s.max_vibration AS max_vib_ips
 FROM aircraft_ref a
-LEFT JOIN maintenance_summary m ON a.aircraft_id = m.aircraft_id
-LEFT JOIN sensor_health s ON a.aircraft_id = s.aircraft_id
+LEFT JOIN maintenance_summary m ON a.aircraftId = m.aircraftId
+LEFT JOIN sensor_health s ON a.aircraftId = s.aircraftId
 ORDER BY m.total_events DESC NULLS LAST
 ----
 
@@ -78,7 +78,7 @@ ORDER BY m.total_events DESC NULLS LAST
 
 * **Neo4j** (Spark Connector): Loads all `MaintenanceEvent` nodes with their properties, grouped by aircraft and severity
 * **Delta** (4-table join): Aggregates sensor readings per aircraft, computing avg/max for EGT and vibration
-* **Federation**: LEFT JOINs both summaries on `aircraft_id` so every aircraft appears even without maintenance events
+* **Federation**: LEFT JOINs both summaries on `aircraftId` so every aircraft appears even without maintenance events
 
 == Actual Output: Load Maintenance Events (Databricks Runtime 17.3 LTS)
 
@@ -90,7 +90,7 @@ Loaded 300 maintenance events from Neo4j
 
 Sample maintenance events:
 +-----------+---------------+--------+----------------------------+
-|aircraft_id|fault          |severity|corrective_action           |
+|aircraftId|fault          |severity|corrective_action           |
 +-----------+---------------+--------+----------------------------+
 |AC1002     |Contamination  |CRITICAL|Adjusted tolerance          |
 |AC1017     |Sensor drift   |MINOR   |Replaced component          |

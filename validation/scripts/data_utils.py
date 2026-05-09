@@ -16,6 +16,7 @@ Provides:
 import csv
 import os
 import sys
+from urllib.parse import urlparse
 
 
 # ---------------------------------------------------------------------------
@@ -65,11 +66,13 @@ def get_config() -> dict:
     neo4j_uri = os.environ.get("NEO4J_URI")
     neo4j_host = os.environ.get("NEO4J_HOST", "")
     if neo4j_uri:
-        neo4j_host = neo4j_uri.replace("neo4j+s://", "").replace("neo4j://", "")
+        neo4j_host = _host_from_neo4j_uri(neo4j_uri)
     elif not neo4j_host:
         raise KeyError("NEO4J_HOST or NEO4J_URI")
-    elif neo4j_host.startswith(("neo4j+s://", "neo4j://")):
-        neo4j_host = neo4j_host.replace("neo4j+s://", "").replace("neo4j://", "")
+    elif neo4j_host.startswith(("neo4j+s://", "neo4j+ssc://", "neo4j://", "bolt+s://", "bolt://")):
+        neo4j_host = _host_from_neo4j_uri(neo4j_host)
+    else:
+        neo4j_host = neo4j_host.rstrip("/")
 
     neo4j_username = os.environ.get("NEO4J_USERNAME", "neo4j")
     neo4j_password = os.environ["NEO4J_PASSWORD"]
@@ -84,15 +87,18 @@ def get_config() -> dict:
     volume_path = (
         f"/Volumes/{uc_catalog}/{uc_schema}/{uc_volume}" if uc_catalog else None
     )
+    neo4j_host_with_port = _with_default_port(neo4j_host, 7687)
+    neo4j_bolt_uri = f"neo4j+s://{neo4j_host_with_port}"
 
     return {
+        "neo4j_uri": neo4j_bolt_uri,
         "neo4j_host": neo4j_host,
         "neo4j_username": neo4j_username,
         "neo4j_password": neo4j_password,
         "neo4j_database": neo4j_database,
-        "neo4j_bolt_uri": f"neo4j+s://{neo4j_host}",
-        "neo4j_jdbc_url": f"jdbc:neo4j+s://{neo4j_host}:7687/{neo4j_database}",
-        "neo4j_jdbc_url_sql": f"jdbc:neo4j+s://{neo4j_host}:7687/{neo4j_database}?enableSQLTranslation=true",
+        "neo4j_bolt_uri": neo4j_bolt_uri,
+        "neo4j_jdbc_url": f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}",
+        "neo4j_jdbc_url_sql": f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}?enableSQLTranslation=true",
         "uc_connection_name": uc_connection_name,
         "jdbc_jar_path": jdbc_jar_path,
         "java_dependencies": f'["{jdbc_jar_path}"]',
@@ -107,6 +113,22 @@ def get_config() -> dict:
         "uc_volume": uc_volume,
         "volume_path": volume_path,
     }
+
+
+def _host_from_neo4j_uri(value: str) -> str:
+    """Return the host from a Neo4j/Bolt URI without path or trailing slash."""
+    uri = value.strip().removeprefix("jdbc:").rstrip("/")
+    parsed = urlparse(uri)
+    if parsed.netloc:
+        return parsed.netloc
+    return uri.split("://", 1)[-1].split("/", 1)[0]
+
+
+def _with_default_port(host: str, port: int) -> str:
+    """Append a default port when a host string does not already include one."""
+    if ":" in host:
+        return host
+    return f"{host}:{port}"
 
 
 # ---------------------------------------------------------------------------
@@ -168,9 +190,10 @@ def read_neo4j_jdbc(spark, cfg: dict, custom_schema: str, query: str):
 
 def remote_query(spark, cfg: dict, query: str):
     """Execute a query via remote_query() SQL function."""
+    safe_query = query.replace("'", "''")
     return spark.sql(f"""
         SELECT * FROM remote_query('{cfg["uc_connection_name"]}',
-            query => '{query}')
+            query => '{safe_query}')
     """)
 
 

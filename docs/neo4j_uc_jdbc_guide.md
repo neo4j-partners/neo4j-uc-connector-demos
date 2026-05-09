@@ -172,8 +172,8 @@ SELECT COUNT(*) AS total FROM Flight
 ### Multiple Aggregates
 ```sql
 SELECT COUNT(*) AS total,
-       MIN(aircraft_id) AS first_id,
-       MAX(aircraft_id) AS last_id
+       MIN(aircraftId) AS first_id,
+       MAX(aircraftId) AS last_id
 FROM Aircraft
 -- Result: {total: 60, first_id: 'AC1001', last_id: 'AC1020'}
 ```
@@ -441,4 +441,3 @@ spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 | `getting-started/01-simple-connect-test.ipynb` | Create the UC JDBC connection and run basic SQL queries |
 | `getting-started/02-federated-queries.ipynb` | Federated queries joining Neo4j graph topology with Delta |
 | `getting-started/03-materialized-tables.ipynb` | Materialize Neo4j node labels as managed Delta tables |
-

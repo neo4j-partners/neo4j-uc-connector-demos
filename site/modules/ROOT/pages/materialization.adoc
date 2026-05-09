@@ -127,12 +127,12 @@ Once all node tables exist in the Unity Catalog schema, they join with `sensor_r
 -- Sensor health by aircraft system type
 SELECT sys.type AS system_type,
        COUNT(DISTINCT s.sensorId) AS sensor_count,
-       COUNT(r.reading_id)        AS total_readings,
+       COUNT(r.readingId)        AS total_readings,
        ROUND(AVG(r.value), 2)     AS avg_reading,
        ROUND(STDDEV(r.value), 2)  AS stddev_reading
 FROM neo4j_sensors s
 JOIN neo4j_systems sys  ON s.systemId  = sys.systemId
-JOIN sensor_readings r  ON r.sensor_id = s.sensorId
+JOIN sensor_readings r  ON r.sensorId = s.sensorId
 GROUP BY sys.type
 ORDER BY total_readings DESC
 ----
@@ -163,7 +163,7 @@ LEFT JOIN neo4j_maintenance_events m ON a.aircraftId = m.aircraftId
 LEFT JOIN neo4j_sensors s            ON s.systemId   IN (
     SELECT systemId FROM neo4j_systems WHERE aircraftId = a.aircraftId
 )
-LEFT JOIN sensor_readings r ON r.sensor_id = s.sensorId
+LEFT JOIN sensor_readings r ON r.sensorId = s.sensorId
 GROUP BY a.aircraftId, a.model, a.operator
 ORDER BY critical_events DESC
 ----

@@ -95,15 +95,15 @@ Sensor time-series data is not stored in Neo4j. It lives as a Delta table in the
 |===
 |Column |Type |Description
 
-|`reading_id`
+|`readingId`
 |STRING
 |Unique identifier for the reading
 
-|`sensor_id`
+|`sensorId`
 |STRING
 |Foreign key matching `Sensor.sensorId` in the graph
 
-|`timestamp`
+|`ts`
 |TIMESTAMP
 |Reading timestamp
 
@@ -113,7 +113,7 @@ Sensor time-series data is not stored in Neo4j. It lives as a Delta table in the
 
 |===
 
-Expected row count: 172,800 (160 sensors × 1,080 readings each). This table is loaded from `nodes_readings.csv` by `run_01_connect_test.py` using `read_files()` directly into Delta — it does not pass through Neo4j.
+Expected row count: 172,800 (160 sensors × 1,080 readings each). Notebook `01-simple-connect-test.ipynb` loads this table from `nodes_readings.csv` with `read_files()`, normalizes the raw CSV headers to camelCase, and writes it directly into Delta. It does not pass through Neo4j.
 
 == Indexes
 
@@ -121,11 +121,11 @@ The graph loader creates one index per node type on its primary key property:
 
 [source,cypher]
 ----
-CREATE INDEX aircraft_id IF NOT EXISTS FOR (n:Aircraft) ON (n.aircraftId)
+CREATE INDEX aircraftId IF NOT EXISTS FOR (n:Aircraft) ON (n.aircraftId)
 CREATE INDEX airport_id  IF NOT EXISTS FOR (n:Airport)  ON (n.airportId)
-CREATE INDEX system_id   IF NOT EXISTS FOR (n:System)   ON (n.systemId)
+CREATE INDEX systemId   IF NOT EXISTS FOR (n:System)   ON (n.systemId)
 CREATE INDEX component_id IF NOT EXISTS FOR (n:Component) ON (n.componentId)
-CREATE INDEX sensor_id   IF NOT EXISTS FOR (n:Sensor)   ON (n.sensorId)
+CREATE INDEX sensorId   IF NOT EXISTS FOR (n:Sensor)   ON (n.sensorId)
 CREATE INDEX flight_id   IF NOT EXISTS FOR (n:Flight)   ON (n.flightId)
 CREATE INDEX delay_id    IF NOT EXISTS FOR (n:Delay)    ON (n.delayId)
 CREATE INDEX maint_id    IF NOT EXISTS FOR (n:MaintenanceEvent) ON (n.eventId)

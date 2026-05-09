@@ -105,7 +105,7 @@ Example output structure:
     "type": "node",
     "count": 60,
     "properties": {
-      "aircraft_id": {"type": "STRING", "indexed": true, "unique": true, "existence": false},
+      "aircraftId": {"type": "STRING", "indexed": true, "unique": true, "existence": false},
       "manufacturer": {"type": "STRING", "indexed": false, "unique": false, "existence": false},
       "model": {"type": "STRING", "indexed": false, "unique": false, "existence": false},
       "icao24": {"type": "STRING", "indexed": false, "unique": false, "existence": false}
@@ -196,7 +196,7 @@ Unity Catalog                  Neo4j
 Catalog: neo4j_catalog    →    Neo4j database
   Schema: nodes           →    Node labels namespace
     Table: aircraft        →    :Aircraft label
-      Column: aircraft_id  →    aircraft_id property (STRING)
+      Column: aircraftId   →    aircraftId property (STRING)
       Column: manufacturer →    manufacturer property (STRING)
     Table: flight          →    :Flight label
     Table: airport         →    :Airport label
@@ -235,7 +235,7 @@ Register Neo4j labels/relationships as `EXTERNAL` or `FOREIGN` table entries in 
   "table_type": "EXTERNAL",
   "data_source_format": "JSON",
   "columns": [
-    {"name": "aircraft_id", "type_name": "STRING", "nullable": false, "position": 0, "comment": "Unique aircraft identifier"},
+    {"name": "aircraftId", "type_name": "STRING", "nullable": false, "position": 0, "comment": "Unique aircraft identifier"},
     {"name": "manufacturer", "type_name": "STRING", "nullable": true, "position": 1},
     {"name": "model", "type_name": "STRING", "nullable": true, "position": 2},
     {"name": "icao24", "type_name": "STRING", "nullable": true, "position": 3}
@@ -291,15 +291,15 @@ Register Neo4j objects as external metadata entries, designed for systems outsid
   "system_type": "OTHER",
   "entity_type": "NodeLabel",
   "description": "Aircraft node label in Neo4j (60 nodes, 4 properties)",
-  "columns": ["aircraft_id", "manufacturer", "model", "icao24"],
+  "columns": ["aircraftId", "manufacturer", "model", "icao24"],
   "url": "neo4j+s://your-host:7687",
   "properties": {
     "neo4j.database": "neo4j",
     "neo4j.label": "Aircraft",
     "neo4j.node_count": "60",
-    "neo4j.property.aircraft_id.type": "STRING",
-    "neo4j.property.aircraft_id.indexed": "true",
-    "neo4j.property.aircraft_id.unique": "true",
+    "neo4j.property.aircraftId.type": "STRING",
+    "neo4j.property.aircraftId.indexed": "true",
+    "neo4j.property.aircraftId.unique": "true",
     "neo4j.property.manufacturer.type": "STRING",
     "neo4j.property.model.type": "STRING",
     "neo4j.property.icao24.type": "STRING"

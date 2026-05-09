@@ -24,7 +24,7 @@ Sample aircraft query:
 
 [source,sql]
 ----
-SELECT `:ID(Aircraft)` AS aircraft_id, tail_number, model, manufacturer, operator
+SELECT aircraftId, tail_number, model, manufacturer, operator
 FROM aircraft LIMIT 5
 ----
 
@@ -37,11 +37,11 @@ DELTA LAKEHOUSE TABLES
   aircraft: 20 rows
   systems: 80 rows
   sensors: 160 rows
-  sensor_readings: 345,600 rows
+  sensor_readings: 172,800 rows
 
 Sample aircraft data:
 +-----------+-----------+--------+------------+-----------+
-|aircraft_id|tail_number|model   |manufacturer|operator   |
+|aircraftId|tail_number|model   |manufacturer|operator   |
 +-----------+-----------+--------+------------+-----------+
 |AC1001     |N95040A    |B737-800|Boeing      |ExampleAir |
 |AC1002     |N30268B    |A320-200|Airbus      |SkyWays    |

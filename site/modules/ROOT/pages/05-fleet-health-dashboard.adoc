@@ -29,31 +29,31 @@ Uses the `neo4j_maintenance` and `neo4j_flights` temp views loaded via Spark Con
 [source,sql]
 ----
 WITH aircraft_ref AS (
-    SELECT `:ID(Aircraft)` AS aircraft_id, tail_number, model, manufacturer, operator
+    SELECT aircraftId, tail_number, model, manufacturer, operator
     FROM aircraft
 ),
 sensor_stats AS (
     SELECT
-        sys.aircraft_id,
+        sys.aircraftId,
         ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
         ROUND(AVG(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS avg_vib,
         ROUND(AVG(CASE WHEN sen.type = 'FuelFlow' THEN r.value END), 2) AS avg_fuel,
         COUNT(*) AS reading_count
     FROM sensor_readings r
-    JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-    JOIN systems sys ON sen.system_id = sys.`:ID(System)`
-    GROUP BY sys.aircraft_id
+    JOIN sensors sen ON r.sensorId = sen.sensorId
+    JOIN systems sys ON sen.systemId = sys.systemId
+    GROUP BY sys.aircraftId
 ),
 maint AS (
-    SELECT aircraft_id, COUNT(*) AS events,
+    SELECT aircraftId, COUNT(*) AS events,
            SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical
     FROM neo4j_maintenance
-    GROUP BY aircraft_id
+    GROUP BY aircraftId
 ),
 flights AS (
-    SELECT aircraft_id, COUNT(*) AS flight_count
+    SELECT aircraftId, COUNT(*) AS flight_count
     FROM neo4j_flights
-    GROUP BY aircraft_id
+    GROUP BY aircraftId
 )
 SELECT
     a.tail_number,
@@ -67,9 +67,9 @@ SELECT
     s.avg_fuel AS fuel_kgs,
     s.reading_count AS readings
 FROM aircraft_ref a
-LEFT JOIN flights f ON a.aircraft_id = f.aircraft_id
-LEFT JOIN maint m ON a.aircraft_id = m.aircraft_id
-LEFT JOIN sensor_stats s ON a.aircraft_id = s.aircraft_id
+LEFT JOIN flights f ON a.aircraftId = f.aircraftId
+LEFT JOIN maint m ON a.aircraftId = m.aircraftId
+LEFT JOIN sensor_stats s ON a.aircraftId = s.aircraftId
 ORDER BY COALESCE(m.critical, 0) DESC, COALESCE(m.events, 0) DESC
 ----
 
@@ -78,7 +78,7 @@ ORDER BY COALESCE(m.critical, 0) DESC, COALESCE(m.events, 0) DESC
 * **remote_query()**: Graph traversal counting Flight→DEPARTS_FROM→Airport connections (fleet-wide metric)
 * **Spark Connector temp views**: Per-aircraft maintenance events (with severity breakdown) and flight counts from Neo4j
 * **Delta tables**: Per-aircraft sensor aggregates across all sensor types (EGT, vibration, fuel flow)
-* **Federation**: LEFT JOINs everything on `aircraft_id`, sorted by critical maintenance events descending
+* **Federation**: LEFT JOINs everything on `aircraftId`, sorted by critical maintenance events descending
 
 == Actual Output (Databricks Runtime 17.3 LTS)
 
@@ -95,26 +95,26 @@ Neo4j: MaintenanceEvent + Flight (Spark Connector), graph traversal (remote_quer
 +-----------+--------+-----------+-------+------------+--------+-----+-------+--------+--------+
 |tail_number|model   |operator   |flights|maint_events|critical|egt_c|vib_ips|fuel_kgs|readings|
 +-----------+--------+-----------+-------+------------+--------+-----+-------+--------+--------+
-|N53032E    |B737-800|ExampleAir |27     |25          |8       |671.6|0.266  |1.39    |17280   |
-|N54980C    |A321neo |RegionalCo |34     |20          |8       |671.6|0.266  |1.39    |17280   |
-|N76758N    |A320-200|SkyWays    |46     |26          |7       |671.6|0.2659 |1.39    |17280   |
-|N30268B    |A320-200|SkyWays    |41     |18          |6       |671.6|0.2659 |1.39    |17280   |
-|N86057G    |A321neo |RegionalCo |51     |18          |6       |671.6|0.2659 |1.39    |17280   |
-|N84110I    |B737-800|ExampleAir |43     |17          |6       |671.6|0.2659 |1.39    |17280   |
-|N37272D    |E190    |NorthernJet|30     |15          |6       |671.6|0.266  |1.39    |17280   |
-|N81338F    |A320-200|SkyWays    |45     |14          |6       |671.6|0.2659 |1.39    |17280   |
-|N13211H    |E190    |NorthernJet|39     |13          |6       |671.6|0.266  |1.39    |17280   |
-|N26760M    |B737-800|ExampleAir |30     |13          |6       |671.6|0.2659 |1.39    |17280   |
-|N44342Q    |B737-800|ExampleAir |41     |13          |5       |671.6|0.2658 |1.39    |17280   |
-|N89365K    |A321neo |RegionalCo |48     |12          |5       |671.6|0.2659 |1.39    |17280   |
-|N95040A    |B737-800|ExampleAir |47     |11          |5       |671.6|0.2659 |1.39    |17280   |
-|N84703L    |E190    |NorthernJet|40     |10          |5       |671.6|0.2659 |1.39    |17280   |
-|N46224T    |E190    |NorthernJet|40     |18          |4       |671.6|0.2661 |1.39    |17280   |
-|N96107S    |A321neo |RegionalCo |41     |15          |3       |671.6|0.2659 |1.39    |17280   |
-|N32276J    |A320-200|SkyWays    |33     |12          |3       |671.6|0.266  |1.39    |17280   |
-|N65164O    |A321neo |RegionalCo |30     |9           |3       |671.7|0.2659 |1.39    |17280   |
-|N15332P    |E190    |NorthernJet|46     |14          |2       |671.6|0.2658 |1.39    |17280   |
-|N63098R    |A320-200|SkyWays    |48     |7           |1       |671.6|0.2658 |1.39    |17280   |
+|N53032E    |B737-800|ExampleAir |27     |25          |8       |671.6|0.266  |1.39    |8640   |
+|N54980C    |A321neo |RegionalCo |34     |20          |8       |671.6|0.266  |1.39    |8640   |
+|N76758N    |A320-200|SkyWays    |46     |26          |7       |671.6|0.2659 |1.39    |8640   |
+|N30268B    |A320-200|SkyWays    |41     |18          |6       |671.6|0.2659 |1.39    |8640   |
+|N86057G    |A321neo |RegionalCo |51     |18          |6       |671.6|0.2659 |1.39    |8640   |
+|N84110I    |B737-800|ExampleAir |43     |17          |6       |671.6|0.2659 |1.39    |8640   |
+|N37272D    |E190    |NorthernJet|30     |15          |6       |671.6|0.266  |1.39    |8640   |
+|N81338F    |A320-200|SkyWays    |45     |14          |6       |671.6|0.2659 |1.39    |8640   |
+|N13211H    |E190    |NorthernJet|39     |13          |6       |671.6|0.266  |1.39    |8640   |
+|N26760M    |B737-800|ExampleAir |30     |13          |6       |671.6|0.2659 |1.39    |8640   |
+|N44342Q    |B737-800|ExampleAir |41     |13          |5       |671.6|0.2658 |1.39    |8640   |
+|N89365K    |A321neo |RegionalCo |48     |12          |5       |671.6|0.2659 |1.39    |8640   |
+|N95040A    |B737-800|ExampleAir |47     |11          |5       |671.6|0.2659 |1.39    |8640   |
+|N84703L    |E190    |NorthernJet|40     |10          |5       |671.6|0.2659 |1.39    |8640   |
+|N46224T    |E190    |NorthernJet|40     |18          |4       |671.6|0.2661 |1.39    |8640   |
+|N96107S    |A321neo |RegionalCo |41     |15          |3       |671.6|0.2659 |1.39    |8640   |
+|N32276J    |A320-200|SkyWays    |33     |12          |3       |671.6|0.266  |1.39    |8640   |
+|N65164O    |A321neo |RegionalCo |30     |9           |3       |671.7|0.2659 |1.39    |8640   |
+|N15332P    |E190    |NorthernJet|46     |14          |2       |671.6|0.2658 |1.39    |8640   |
+|N63098R    |A320-200|SkyWays    |48     |7           |1       |671.6|0.2658 |1.39    |8640   |
 +-----------+--------+-----------+-------+------------+--------+-----+-------+--------+--------+
 ....
 

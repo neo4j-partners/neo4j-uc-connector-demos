@@ -20,7 +20,7 @@ Before every query, Spark sends a schema probe: `SELECT * FROM (your_query) SPAR
 |`SELECT COUNT(*) AS cnt FROM Flight`
 
 |Multiple aggregates
-|`SELECT COUNT(*) AS total, MIN(aircraft_id) AS first, MAX(aircraft_id) AS last FROM Aircraft`
+|`SELECT COUNT(*) AS total, MIN(aircraftId) AS first, MAX(aircraftId) AS last FROM Aircraft`
 
 |COUNT DISTINCT
 |`SELECT COUNT(DISTINCT manufacturer) AS makes FROM Aircraft`
@@ -148,7 +148,7 @@ Both projected and non-projected group keys are supported.
 |`SELECT severity, COUNT(*) AS cnt FROM MaintenanceEvent GROUP BY severity HAVING COUNT(*) > 5 ORDER BY cnt DESC LIMIT 10 OFFSET 0`
 
 |Federated GROUP BY + Delta LEFT JOIN
-|`remote_query()` CTE with GROUP BY, LEFT JOINed to a Delta table on `aircraft_id`
+|`remote_query()` CTE with GROUP BY, LEFT JOINed to a Delta table on `aircraftId`
 
 |Federated HAVING + Delta INNER JOIN
 |`remote_query()` CTE with GROUP BY + HAVING, INNER JOINed to a Delta table
@@ -191,9 +191,9 @@ WITH neo4j_counts AS (
                   GROUP BY aircraftId')
     GROUP BY aircraftId
 )
-SELECT d.aircraft_id, n.maint_count
+SELECT d.aircraftId, n.maint_count
 FROM delta_aircraft_ref d
-LEFT JOIN neo4j_counts n ON d.aircraft_id = n.aircraftId
+LEFT JOIN neo4j_counts n ON d.aircraftId = n.aircraftId
 ----
 
 === Add HAVING COUNT(*) > 0 for warm-cluster reliability

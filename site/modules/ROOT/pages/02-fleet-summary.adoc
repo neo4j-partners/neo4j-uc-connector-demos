@@ -55,14 +55,14 @@ CROSS JOIN (
         AVG(CASE WHEN sen.type = 'N1Speed' THEN r.value END) AS avg_n1_speed,
         COUNT(*) AS total_readings
     FROM sensor_readings r
-    JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
+    JOIN sensors sen ON r.sensorId = sen.sensorId
 ) sensor
 ----
 
 == What This Query Does
 
 * **Neo4j side** (4 `remote_query()` calls): Counts maintenance events (total + critical), flights, and flight→airport graph traversals
-* **Delta side** (1 subquery): Computes fleet-wide sensor averages across all 345K+ readings by sensor type
+* **Delta side** (1 subquery): Computes fleet-wide sensor averages across all 172K readings by sensor type
 * **CROSS JOIN**: Combines the single-row results from both sides into one unified fleet summary
 
 == Actual Output (Databricks Runtime 17.3 LTS)
@@ -77,7 +77,7 @@ Neo4j: remote_query() via Neo4j Federated JDBC UC Connection | Delta: sensor_rea
 +------------------------+---------------+-------------+--------------------------+---------------+-----------------+-----------------+----------------+--------------+
 |total_maintenance_events|critical_events|total_flights|flight_airport_connections|avg_egt_celsius|avg_vibration_ips|avg_fuel_flow_kgs|avg_n1_speed_rpm|total_readings|
 +------------------------+---------------+-------------+--------------------------+---------------+-----------------+-----------------+----------------+--------------+
-|300                     |0              |800          |800                       |671.6          |0.2659           |1.39             |4768.0          |345600        |
+|300                     |0              |800          |800                       |671.6          |0.2659           |1.39             |4768.0          |172800       |
 +------------------------+---------------+-------------+--------------------------+---------------+-----------------+-----------------+----------------+--------------+
 ....
 

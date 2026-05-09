@@ -52,9 +52,9 @@ The dataset is an aircraft digital twin: 20 aircraft across three operators, eac
 - 12 Airport nodes
 
 **Databricks Delta (tabular data)**
-- `sensor_readings` — 172,800 rows: `reading_id`, `sensor_id`, `ts`, `value`
+- `sensor_readings` — 172,800 rows: `readingId`, `sensorId`, `ts`, `value`
 
-The `sensor_id` is the join key across both systems. Graph topology answers which sensors belong to which aircraft systems; Delta analytics answers what those sensors actually measured.
+The `sensorId` is the join key across both systems. Graph topology answers which sensors belong to which aircraft systems; Delta analytics answers what those sensors actually measured.
 
 ## Notebooks
 
@@ -170,6 +170,6 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 
 **Real-time JDBC vs. materialized tables.** The UC JDBC connection in notebook 02 queries Neo4j on every read, so results reflect the current graph state. But SQL operations are limited to what the connector's SQL-to-Cypher translator supports (aggregates, WHERE, GROUP BY, ORDER BY, LIMIT, NATURAL JOINs mapped to graph traversals). Materialized tables in notebook 03 support unrestricted SQL but show a snapshot that must be refreshed.
 
-**camelCase properties.** Neo4j best practice uses camelCase for property names (`aircraftId`, `sensorId`, `flightId`). All graph properties in these notebooks follow that convention. The `sensor_id` join key in the Delta `sensor_readings` table uses snake_case because it comes from CSV data — the join uses `sensor_topology.sensorId == sensor_stats.sensor_id`.
+**camelCase properties.** Neo4j best practice uses camelCase for property names (`aircraftId`, `sensorId`, `flightId`). Graph properties and Delta tables in these notebooks follow that convention. Raw CSV import headers may use snake_case, but notebook 01 normalizes them when creating Delta tables.
 
 **Data volume.** The dataset uses 20 aircraft and 172,800 sensor readings — small enough for quick iteration. The same patterns apply to larger graphs, though materialization becomes more important as graph size and query latency grow.

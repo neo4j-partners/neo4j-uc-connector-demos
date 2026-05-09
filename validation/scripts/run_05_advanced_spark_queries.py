@@ -226,13 +226,13 @@ def main():
         result = spark.sql(f"""
             WITH neo4j_maint AS (
                 SELECT
-                    COALESCE(aircraftId, aircraft_id) AS aircraftId,
+                    aircraftId,
                     SUM(maint_count) AS maint_count
                 FROM remote_query('{conn}',
-                    query => 'SELECT aircraftId, aircraft_id, COUNT(*) AS maint_count
+                    query => 'SELECT aircraftId, COUNT(*) AS maint_count
                               FROM MaintenanceEvent
-                              GROUP BY aircraftId, aircraft_id')
-                GROUP BY COALESCE(aircraftId, aircraft_id)
+                              GROUP BY aircraftId')
+                GROUP BY aircraftId
             ),
             sensor_health AS (
                 SELECT

@@ -139,8 +139,8 @@ final class DirectJdbcSqlToCypherTest {
                 Statement statement = connection.createStatement();
                 ResultSet resultSet = statement.executeQuery("""
                         SELECT COUNT(*) AS total,
-                               MIN(aircraft_id) AS first_id,
-                               MAX(aircraft_id) AS last_id
+                               MIN(aircraftId) AS first_id,
+                               MAX(aircraftId) AS last_id
                         FROM Aircraft
                         """)) {
             assertTrue(resultSet.next());

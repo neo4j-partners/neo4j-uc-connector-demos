@@ -36,7 +36,7 @@ The working approach uses the Spark DataFrame JDBC reader with `dbtable` (avoids
 [source,python]
 ----
 # Example: materialize MaintenanceEvent nodes as a Delta table
-MAINTENANCE_SCHEMA = """`v$id` STRING, aircraft_id STRING, system_id STRING,
+MAINTENANCE_SCHEMA = """`v$id` STRING, aircraftId STRING, systemId STRING,
     component_id STRING, event_id STRING, severity STRING, fault STRING,
     corrective_action STRING, reported_at STRING"""
 
@@ -45,7 +45,7 @@ df = spark.read.format("jdbc") \
     .option("dbtable", "MaintenanceEvent") \
     .option("customSchema", MAINTENANCE_SCHEMA) \
     .load() \
-    .select("aircraft_id", "fault", "severity", "corrective_action", "reported_at")
+    .select("aircraftId", "fault", "severity", "corrective_action", "reported_at")
 
 df.write.mode("overwrite").saveAsTable("lakehouse.neo4j_maintenance_events")
 ----
@@ -61,7 +61,7 @@ A Genie space is created that includes all data sources as a unified catalog:
 * `aircraft` -- aircraft fleet registry
 * `systems` -- aircraft systems (Engine, APU, etc.)
 * `sensors` -- sensor metadata (EGT, Vibration, FuelFlow, N1Speed)
-* `sensor_readings` -- 345K+ time-series sensor readings
+* `sensor_readings` -- 172K time-series sensor readings
 
 **Neo4j tables (materialized):**
 
@@ -84,30 +84,30 @@ events and flight operations (Neo4j knowledge graph) via Unity Catalog federatio
 ## Sensor Data Model (IMPORTANT)
 
 Sensor data is stored across 4 Delta tables in a normalized model:
-- `aircraft`: fleet registry. Primary key: `:ID(Aircraft)` (e.g. "AC1001").
-- `systems`: aircraft systems. Columns: `:ID(System)`, `aircraft_id`, `type` (Engine, APU, Hydraulic, etc.).
-- `sensors`: individual sensors. Columns: `:ID(Sensor)`, `system_id`, `type` (EGT, Vibration, FuelFlow, N1Speed).
-- `sensor_readings`: time-series values. Columns: `sensor_id`, `timestamp`, `value` (numeric).
+- `aircraft`: fleet registry. Primary key: aircraftId (e.g. "AC1001").
+- `systems`: aircraft systems. Columns: systemId, `aircraftId`, `type` (Engine, APU, Hydraulic, etc.).
+- `sensors`: individual sensors. Columns: sensorId, `systemId`, `type` (EGT, Vibration, FuelFlow, N1Speed).
+- `sensor_readings`: time-series values. Columns: `readingId`, `sensorId`, `ts`, `value` (numeric).
 
 There is NO direct "EGT" or "temperature" column. Sensor type is in `sensors.type`,
 and the reading value is in `sensor_readings.value`. To get EGT readings you MUST
 join through the chain: aircraft → systems → sensors → sensor_readings.
 
 JOIN pattern for sensor data:
-  aircraft.`:ID(Aircraft)` = systems.aircraft_id
-  systems.`:ID(System)` = sensors.system_id
-  sensors.`:ID(Sensor)` = sensor_readings.sensor_id
+  aircraft.aircraftId = systems.aircraftId
+  systems.systemId = sensors.systemId
+  sensors.sensorId = sensor_readings.sensorId
 
 Filter by sensor type: WHERE sensors.type = 'EGT' (or 'Vibration', 'FuelFlow', 'N1Speed')
 Filter by system type: WHERE systems.type = 'Engine' (or 'APU', 'Hydraulic', etc.)
 
 Example: average EGT per aircraft:
-  SELECT sys.aircraft_id, ROUND(AVG(r.value), 1) AS avg_egt
+  SELECT sys.aircraftId, ROUND(AVG(r.value), 1) AS avg_egt
   FROM sensor_readings r
-  JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-  JOIN systems sys ON sen.system_id = sys.`:ID(System)`
+  JOIN sensors sen ON r.sensorId = sen.sensorId
+  JOIN systems sys ON sen.systemId = sys.systemId
   WHERE sen.type = 'EGT'
-  GROUP BY sys.aircraft_id
+  GROUP BY sys.aircraftId
 
 Sensor types and units:
 - EGT: Exhaust Gas Temperature in Celsius
@@ -118,23 +118,23 @@ Sensor types and units:
 ## Neo4j Tables (Materialized)
 
 Neo4j tables contain graph-sourced data materialized as Delta tables:
-- `neo4j_maintenance_events`: columns: aircraft_id, fault, severity (CRITICAL, MAJOR, MINOR), corrective_action, reported_at
-- `neo4j_flights`: columns: aircraft_id, flight_number, operator, origin, destination, scheduled_departure, scheduled_arrival
+- `neo4j_maintenance_events`: columns: aircraftId, fault, severity (CRITICAL, MAJOR, MINOR), corrective_action, reported_at
+- `neo4j_flights`: columns: aircraftId, flight_number, operator, origin, destination, scheduled_departure, scheduled_arrival
 - `neo4j_airports`: columns: iata, airport_name, city, country, icao, lat, lon
-- `neo4j_flight_airports`: columns: flight_number, aircraft_id, airport_code, airport_name
+- `neo4j_flight_airports`: columns: flight_number, aircraftId, airport_code, airport_name
 
 ## Cross-Source JOINs
 
-Join `aircraft_id` across both sources to correlate sensor health with maintenance
-and flight activity. The aircraft table's `:ID(Aircraft)` matches `aircraft_id` in
-the Neo4j tables and `systems.aircraft_id` in the sensor chain.
+Join `aircraftId` across both sources to correlate sensor health with maintenance
+and flight activity. The aircraft table's aircraftId matches `aircraftId` in
+the Neo4j tables and `systems.aircraftId` in the sensor chain.
 ----
 
 The instructions cover:
 
 * **Sensor data model:** Sensor data is stored across 4 normalized Delta tables. There is no direct "EGT" or "temperature" column -- to get sensor readings you must join through the chain: `aircraft` -> `systems` -> `sensors` -> `sensor_readings`, filtering by `sensors.type`.
 * **Neo4j table descriptions:** Column names, key fields, and what each materialized table contains.
-* **Cross-source JOIN patterns:** How to join `aircraft_id` across both Delta and Neo4j tables to correlate sensor health with maintenance and flight activity.
+* **Cross-source JOIN patterns:** How to join `aircraftId` across both Delta and Neo4j tables to correlate sensor health with maintenance and flight activity.
 * **Example SQL:** Pre-built queries for common questions like fleet health dashboards, high-EGT aircraft with critical maintenance, and flight activity correlated with engine performance.
 
 == Architecture
@@ -166,36 +166,36 @@ Everything flows through Unity Catalog. No Spark Connector, no direct Bolt conne
 
 **Question:** _For each aircraft, show the number of flights, maintenance events, and average engine temperature._
 
-**Analysis:** This question requires federating across three data sources: flight counts from `neo4j_flights`, maintenance event counts from `neo4j_maintenance_events`, and average EGT from the Delta sensor chain (`sensor_readings` -> `sensors` filtered by type = 'EGT'). Genie identifies the relevant tables, joins them on `aircraft_id`, replaces missing counts with zero, and rounds the average EGT to two decimal places.
+**Analysis:** This question requires federating across three data sources: flight counts from `neo4j_flights`, maintenance event counts from `neo4j_maintenance_events`, and average EGT from the Delta sensor chain (`sensor_readings` -> `sensors` filtered by type = 'EGT'). Genie identifies the relevant tables, joins them on `aircraftId`, replaces missing counts with zero, and rounds the average EGT to two decimal places.
 
 **Genie-generated SQL:**
 
 [source,sql]
 ----
 SELECT
-    COALESCE(f.aircraft_id, m.aircraft_id, e.aircraft_id) AS aircraft_id,
+    COALESCE(f.aircraftId, m.aircraftId, e.aircraftId) AS aircraftId,
     COALESCE(f.num_flights, 0) AS num_flights,
     COALESCE(m.num_maintenance_events, 0) AS num_maintenance_events,
     ROUND(e.avg_egt, 2) AS avg_egt_celsius
 FROM (
-    SELECT aircraft_id, COUNT(*) AS num_flights
+    SELECT aircraftId, COUNT(*) AS num_flights
     FROM neo4j_flights
-    GROUP BY aircraft_id
+    GROUP BY aircraftId
 ) f
 FULL OUTER JOIN (
-    SELECT aircraft_id, COUNT(*) AS num_maintenance_events
+    SELECT aircraftId, COUNT(*) AS num_maintenance_events
     FROM neo4j_maintenance_events
-    GROUP BY aircraft_id
-) m ON f.aircraft_id = m.aircraft_id
+    GROUP BY aircraftId
+) m ON f.aircraftId = m.aircraftId
 FULL OUTER JOIN (
-    SELECT sys.aircraft_id, AVG(r.value) AS avg_egt
+    SELECT sys.aircraftId, AVG(r.value) AS avg_egt
     FROM sensor_readings r
-    JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-    JOIN systems sys ON sen.system_id = sys.`:ID(System)`
+    JOIN sensors sen ON r.sensorId = sen.sensorId
+    JOIN systems sys ON sen.systemId = sys.systemId
     WHERE sen.type = 'EGT'
-    GROUP BY sys.aircraft_id
-) e ON COALESCE(f.aircraft_id, m.aircraft_id) = e.aircraft_id
-ORDER BY aircraft_id
+    GROUP BY sys.aircraftId
+) e ON COALESCE(f.aircraftId, m.aircraftId) = e.aircraftId
+ORDER BY aircraftId
 ----
 
 **Results:**

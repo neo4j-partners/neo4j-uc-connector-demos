@@ -43,6 +43,7 @@ ENV/
 Pipfile.lock
 poetry.lock
 uv.lock
+!validation/uv.lock
 pip-wheel-metadata/
 
 # Java

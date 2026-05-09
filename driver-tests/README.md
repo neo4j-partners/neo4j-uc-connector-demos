@@ -65,6 +65,11 @@ the same JDBC URL without `enableSQLTranslation=true`.
 ./mvn test
 ```
 
+This is the clean local quality gate for currently supported and documented
+driver behavior. The advanced and potential-bug classes are intentional
+regression probes for upstream driver gaps and are excluded from the default
+test run.
+
 Run only the baseline validation coverage:
 
 ```bash
@@ -81,6 +86,12 @@ Run only the additional potential bug probes:
 
 ```bash
 ./mvn test -Dtest=DirectJdbcPotentialBugTest
+```
+
+Run all tests including the expected-failing probe classes:
+
+```bash
+./mvn test -Pprobe-tests
 ```
 
 Run only the currently documented unsupported forms:
@@ -130,7 +141,7 @@ patterns that are also covered end to end by
 - `HAVING`, including non-projected and compound aggregate predicates
 - aggregate `ORDER BY`, `LIMIT`, `OFFSET`, and combined post-aggregate clauses
 - `LIKE` string literals called directly through JDBC
-- Neo4j-side portions of the run_06 federated maintenance queries
+- Neo4j-side portions of the advanced federated maintenance queries
 - `JOIN + GROUP BY` over `Flight -> DEPARTS_FROM -> Airport`
 - Spark schema inference wrappers shaped like
   `SELECT * FROM (<query>) SPARK_GEN_SUBQ_0 WHERE 1=0`

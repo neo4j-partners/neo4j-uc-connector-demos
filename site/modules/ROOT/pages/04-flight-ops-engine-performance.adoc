@@ -31,29 +31,29 @@ neo4j_flights.createOrReplaceTempView("neo4j_flights")
 [source,sql]
 ----
 WITH aircraft_ref AS (
-    SELECT `:ID(Aircraft)` AS aircraft_id, tail_number, model, operator
+    SELECT aircraftId, tail_number, model, operator
     FROM aircraft
 ),
 flight_activity AS (
     SELECT
-        aircraft_id,
+        aircraftId,
         COUNT(*) AS total_flights,
         COUNT(DISTINCT origin) AS unique_origins,
         COUNT(DISTINCT destination) AS unique_destinations
     FROM neo4j_flights
-    GROUP BY aircraft_id
+    GROUP BY aircraftId
 ),
 engine_health AS (
     SELECT
-        sys.aircraft_id,
+        sys.aircraftId,
         ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
         ROUND(AVG(CASE WHEN sen.type = 'FuelFlow' THEN r.value END), 2) AS avg_fuel_flow,
         ROUND(AVG(CASE WHEN sen.type = 'N1Speed' THEN r.value END), 0) AS avg_n1_speed
     FROM sensor_readings r
-    JOIN sensors sen ON r.sensor_id = sen.`:ID(Sensor)`
-    JOIN systems sys ON sen.system_id = sys.`:ID(System)`
+    JOIN sensors sen ON r.sensorId = sen.sensorId
+    JOIN systems sys ON sen.systemId = sys.systemId
     WHERE sys.type = 'Engine'
-    GROUP BY sys.aircraft_id
+    GROUP BY sys.aircraftId
 )
 SELECT
     a.tail_number,
@@ -66,8 +66,8 @@ SELECT
     e.avg_fuel_flow AS fuel_kgs,
     e.avg_n1_speed AS n1_rpm
 FROM aircraft_ref a
-JOIN flight_activity f ON a.aircraft_id = f.aircraft_id
-JOIN engine_health e ON a.aircraft_id = e.aircraft_id
+JOIN flight_activity f ON a.aircraftId = f.aircraftId
+JOIN engine_health e ON a.aircraftId = e.aircraftId
 ORDER BY f.total_flights DESC
 ----
 
@@ -75,7 +75,7 @@ ORDER BY f.total_flights DESC
 
 * **Neo4j** (Spark Connector): Loads `Flight` nodes, groups by aircraft to compute flight counts and unique origin/destination airports
 * **Delta** (3-table join): Aggregates engine-specific sensor readings (filtered to `sys.type = 'Engine'`) per aircraft
-* **Federation**: INNER JOINs both on `aircraft_id` so only aircraft with both flights and engine data appear
+* **Federation**: INNER JOINs both on `aircraftId` so only aircraft with both flights and engine data appear
 
 == Actual Output: Load Flights (Databricks Runtime 17.3 LTS)
 
@@ -87,7 +87,7 @@ Loaded 800 flights from Neo4j
 
 Sample flight data:
 +-----------+-------------+-----------+------+-----------+
-|aircraft_id|flight_number|operator   |origin|destination|
+|aircraftId|flight_number|operator   |origin|destination|
 +-----------+-------------+-----------+------+-----------+
 |AC1013     |EX370        |ExampleAir |PHX   |SEA        |
 |AC1014     |SK739        |SkyWays    |SEA   |SFO        |

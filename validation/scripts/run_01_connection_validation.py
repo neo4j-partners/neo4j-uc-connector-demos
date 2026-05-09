@@ -86,7 +86,7 @@ except Exception as e:
 print("\n--- Direct JDBC ---")
 
 # 4a: dbtable — read Aircraft label
-AIRCRAFT_SCHEMA = "`v$id` STRING, aircraft_id STRING, tail_number STRING, icao24 STRING, model STRING, operator STRING, manufacturer STRING"
+AIRCRAFT_SCHEMA = "`v$id` STRING, aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, operator STRING, manufacturer STRING"
 try:
     t0 = time.time()
     df = spark.read.format("jdbc") \
@@ -260,8 +260,8 @@ try:
     t0 = time.time()
     df = read_neo4j_jdbc(spark, cfg, "total LONG, first_id STRING, last_id STRING",
                          query="""SELECT COUNT(*) AS total,
-                                         MIN(aircraft_id) AS first_id,
-                                         MAX(aircraft_id) AS last_id
+                                         MIN(aircraftId) AS first_id,
+                                         MAX(aircraftId) AS last_id
                                   FROM Aircraft""")
     row = df.collect()[0]
     ms = (time.time() - t0) * 1000
