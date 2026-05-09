@@ -68,6 +68,6 @@ Analysts can prototype cross-system queries joining Neo4j graph data with lakeho
 == Learn More
 
 * xref:index.adoc[Federated Query Patterns]: Live query examples combining Neo4j and Delta lakehouse data
-* xref:06-uc-integration-setup.adoc[UC Integration Setup]: How to configure the Neo4j JDBC connection to Unity Catalog
+* xref:uc-integration-setup.adoc[UC Integration Setup]: How to configure the Neo4j JDBC connection to Unity Catalog
 * https://docs.databricks.com/query-federation/[Databricks Lakehouse Federation]: Official Databricks documentation on federated queries
 * https://neo4j.com/docs/jdbc-manual/current/sql2cypher/[Neo4j JDBC SQL2Cypher]: How SQL is translated to Cypher automatically

@@ -219,6 +219,6 @@ Pure `GROUP BY` without `HAVING` or `ORDER BY` intermittently returns 0 rows on 
 == References
 
 * https://neo4j.com/docs/jdbc-manual/current/sql2cypher/[Neo4j JDBC SQL-to-Cypher Translation Rules]
-* xref:06-uc-integration-setup.adoc[Deep Dive: UC Integration Setup]
+* xref:uc-integration-setup.adoc[Deep Dive: UC Integration Setup]
 * https://docs.databricks.com/aws/en/connect/jdbc-connection[Databricks JDBC Connection documentation]
 * https://docs.databricks.com/aws/en/sql/language-manual/functions/remote_query[Databricks remote_query() reference]

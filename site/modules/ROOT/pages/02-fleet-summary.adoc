@@ -30,18 +30,18 @@ FROM (
         flights.cnt AS total_flights,
         deps.cnt AS flight_airport_connections
     FROM
-        remote_query('neo4j_uc_connection',
+        remote_query('neo4j_connection',
             query => 'SELECT COUNT(*) AS cnt FROM MaintenanceEvent') AS maint
     CROSS JOIN
-        remote_query('neo4j_uc_connection',
+        remote_query('neo4j_connection',
             query => 'SELECT COUNT(*) AS cnt
                       FROM MaintenanceEvent
                       WHERE severity = ''CRITICAL''') AS crit
     CROSS JOIN
-        remote_query('neo4j_uc_connection',
+        remote_query('neo4j_connection',
             query => 'SELECT COUNT(*) AS cnt FROM Flight') AS flights
     CROSS JOIN
-        remote_query('neo4j_uc_connection',
+        remote_query('neo4j_connection',
             query => 'SELECT COUNT(*) AS cnt
                       FROM Flight f
                       NATURAL JOIN DEPARTS_FROM r

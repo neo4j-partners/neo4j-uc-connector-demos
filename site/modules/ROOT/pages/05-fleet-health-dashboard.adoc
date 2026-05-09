@@ -15,7 +15,7 @@ A standalone `remote_query()` call provides a fleet-wide graph metric:
 
 [source,sql]
 ----
-SELECT * FROM remote_query('neo4j_uc_connection',
+SELECT * FROM remote_query('neo4j_connection',
     query => 'SELECT COUNT(*) AS cnt
               FROM Flight f
               NATURAL JOIN DEPARTS_FROM r

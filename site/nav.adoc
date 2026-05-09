@@ -8,7 +8,7 @@
 * xref:06-genie-natural-language.adoc[Query 6: NL Queries with Genie]
 * xref:07-example-use-cases.adoc[Example Use Cases]
 * xref:sql-reference.adoc[SQL Reference]
-* xref:06-uc-integration-setup.adoc[Deep Dive: UC Integration Setup]
+* xref:uc-integration-setup.adoc[Deep Dive: UC Integration Setup]
 * xref:materialization.adoc[Delta Materialization]
 * xref:troubleshooting.adoc[Troubleshooting]
 * xref:08-official-federation-catalog-governance.adoc[What's Next: Catalog & Governance]

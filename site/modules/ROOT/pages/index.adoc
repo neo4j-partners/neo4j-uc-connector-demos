@@ -55,7 +55,7 @@ OPTIONS (
 
 Once this connection exists, you can query Neo4j directly from SQL using `remote_query()`, or from PySpark using the Spark DataFrame JDBC reader, all governed by Unity Catalog.
 
-NOTE: The Neo4j JDBC driver requires additional memory for class loading in the Databricks SafeSpark sandbox. Without the correct Spark configuration (`spark.databricks.safespark.jdbcSandbox.jvm.maxMetaspace.mib`, etc.), the sandbox JVM will crash with "Connection was closed before the operation completed." See the full setup details in the https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/neo4j_uc_jdbc_guide.md[Neo4j Federated JDBC UC Connection Setup Guide].
+NOTE: The Neo4j JDBC driver requires additional memory for class loading in the Databricks SafeSpark sandbox. Without the correct Spark configuration (`spark.databricks.safespark.jdbcSandbox.jvm.maxMetaspace.mib`, etc.), the sandbox JVM will crash with "Connection was closed before the operation completed." See the full setup details in the https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/docs/neo4j_uc_jdbc_guide.md[Neo4j Federated JDBC UC Connection Setup Guide].
 
 == The Demo: Aircraft Digital Twin
 
@@ -164,7 +164,7 @@ Query federated Neo4j and Delta lakehouse data using natural language. Genie gen
 
 Real-world use cases for Neo4j + Databricks Unity Catalog federated queries, including fraud detection, knowledge graph-enriched ML, supply chain visibility, customer 360, and ad hoc exploration.
 
-== xref:06-uc-integration-setup.adoc[Deep Dive: UC Integration Setup]
+== xref:uc-integration-setup.adoc[Deep Dive: UC Integration Setup]
 
 How the Neo4j Federated JDBC UC Connection was built, including the SafeSpark memory fix, SQL-to-Cypher translation details, the `customSchema` requirement, and workarounds for unsupported SQL constructs.
 
@@ -180,13 +180,13 @@ Lakebase, Databricks' managed PostgreSQL, is already an official federated data 
 == Prerequisites
 
 1. Lakehouse tables in Unity Catalog: `aircraft`, `systems`, `sensors`, `sensor_readings`
-2. Neo4j Federated JDBC UC Connection configured (see https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/neo4j_uc_jdbc_guide.md[setup guide])
+2. Neo4j Federated JDBC UC Connection configured (see https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/docs/neo4j_uc_jdbc_guide.md[setup guide])
 3. Neo4j Spark Connector installed as cluster library (for queries 3-5)
 4. `neo4j-uc-creds` secret scope configured
 
 == References
 
-* https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/neo4j_uc_jdbc_guide.md[Neo4j Federated JDBC UC Connection Setup Guide]
+* https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/docs/neo4j_uc_jdbc_guide.md[Neo4j Federated JDBC UC Connection Setup Guide]
 * https://github.com/neo4j-field/databricks-neo4j-mcp-demo/tree/main/aircraft_digital_twin_data[Aircraft Digital Twin Dataset]
 * https://neo4j.com/docs/jdbc-manual/current/sql2cypher/[Neo4j JDBC SQL2Cypher]
 * https://docs.databricks.com/sql/language-manual/functions/remote_query[Databricks remote_query()]

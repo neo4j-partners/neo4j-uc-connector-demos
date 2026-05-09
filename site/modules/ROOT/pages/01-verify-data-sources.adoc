@@ -57,10 +57,10 @@ Use `remote_query()` to count nodes by label:
 
 [source,sql]
 ----
-SELECT * FROM remote_query('neo4j_uc_connection',
+SELECT * FROM remote_query('neo4j_connection',
     query => 'SELECT COUNT(*) AS cnt FROM MaintenanceEvent')
 
-SELECT * FROM remote_query('neo4j_uc_connection',
+SELECT * FROM remote_query('neo4j_connection',
     query => 'SELECT COUNT(*) AS cnt FROM Flight')
 ----
 
@@ -68,7 +68,7 @@ Test a graph traversal (Flight→Airport relationships):
 
 [source,sql]
 ----
-SELECT * FROM remote_query('neo4j_uc_connection',
+SELECT * FROM remote_query('neo4j_connection',
     query => 'SELECT COUNT(*) AS cnt
               FROM Flight f
               NATURAL JOIN DEPARTS_FROM r

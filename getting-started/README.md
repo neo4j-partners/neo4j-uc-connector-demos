@@ -39,7 +39,7 @@ These four notebooks walk through the integration pattern that connects Neo4j to
 
 ## Data Model
 
-The dataset is an aircraft digital twin: 20 aircraft across three operators, each with systems, components, sensors, flights, maintenance events, and delays.
+The dataset is an aircraft digital twin: 20 aircraft across four operators (ExampleAir, SkyWays, RegionalCo, NorthernJet), each with systems, components, sensors, flights, maintenance events, and delays.
 
 **Neo4j (graph-native data)**
 - 20 Aircraft nodes with `aircraftId`, `model`, `manufacturer`, `operator`

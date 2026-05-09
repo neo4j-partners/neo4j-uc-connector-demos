@@ -12,7 +12,7 @@ Materialization makes sense when:
 * **SQL notebooks or analysts** need to join graph topology with sensor data repeatedly, and the per-query JDBC overhead is measurable.
 * The graph data is not updated frequently enough to make staleness a concern.
 
-For freshness-sensitive queries or exploratory one-off analysis, `remote_query()` or the PySpark DataFrame API are better choices. For a comparison of all three approaches, see xref:06-uc-integration-setup.adoc#choosing-the-right-method[Choosing the Right Method].
+For freshness-sensitive queries or exploratory one-off analysis, `remote_query()` or the PySpark DataFrame API are better choices. For a comparison of all three approaches, see xref:uc-integration-setup.adoc#choosing-the-right-method[Choosing the Right Method].
 
 == The Materialization Pattern
 

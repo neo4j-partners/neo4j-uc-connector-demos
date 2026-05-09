@@ -43,16 +43,13 @@ Databricks runs custom JDBC drivers in an isolated JVM sandbox. The connector re
 The connector JAR itself lives in a separate repo:
 [neo4j-unity-catalog-connector](https://github.com/neo4j-labs/neo4j-unity-catalog-connector).
 
-## Code Style
-
-- **Formatter:** Palantir Java Format via Spotless Maven Plugin (enforced at compile phase)
-- Run `./mvnw spotless:apply` before committing Java changes
-
 ## Testing
 
 JUnit 5 tests in `driver-tests/src/test/java/` validate driver-level SQL-to-Cypher
-translation locally. Run `./mvn test` from `driver-tests/`. The connector JAR's
-own JUnit suite lives in the separate
+translation locally. Run `./mvn test` from `driver-tests/` (the local launcher
+downloads Maven into `driver-tests/.maven/` on first use; no system Maven
+required). The connector JAR's own JUnit suite and Spotless formatting lives in
+the separate
 [neo4j-unity-catalog-connector](https://github.com/neo4j-labs/neo4j-unity-catalog-connector)
 repo.
 
