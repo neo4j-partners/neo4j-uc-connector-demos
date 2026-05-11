@@ -1,6 +1,6 @@
 # Neo4j + Databricks Lakehouse Federation
 
-**Documentation Site:** [https://neo4j-partners.github.io/neo4j-uc-integration](https://neo4j-partners.github.io/neo4j-uc-integration)
+**Documentation Site:** [https://neo4j-partners.github.io/neo4j-uc-connector-demos](https://neo4j-partners.github.io/neo4j-uc-connector-demos)
 
 This project shows how to query a Neo4j graph database directly from Databricks using Unity Catalog. You write SQL in Databricks and the Neo4j JDBC driver automatically translates it to Cypher — the graph query language Neo4j uses — so you don't need to learn Cypher to get data out of Neo4j.
 
@@ -38,7 +38,7 @@ For prerequisites, cluster configuration, and setup steps, see [getting-started/
 | `validation/` | Python scripts that upload to a Databricks workspace and run as one-time jobs against a live Neo4j connection — covers data load, connection validation, federated queries, metadata sync, and advanced Spark patterns | Automated end-to-end smoke testing of the full stack (JDBC driver, UC connection, Spark connector, `remote_query`) without manual notebook execution |
 | `driver-tests/` | Local Java tests for Neo4j JDBC SQL-to-Cypher translation, runnable without Databricks | Fast local verification of SQL translation behavior before deploying to a cluster — no Spark, UC, or cloud credentials required |
 | `docs/` | Markdown reference documentation: JDBC setup guide, metadata sync design, and the Spark subquery cleaner explanation | Detailed technical reference for the patterns shown in the notebooks, including type mappings, query examples, and troubleshooting |
-| `site/` | Antora documentation site (AsciiDoc source) published to GitHub Pages | The public documentation site at [neo4j-partners.github.io/neo4j-uc-integration](https://neo4j-partners.github.io/neo4j-uc-integration) |
+| `site/` | Antora documentation site (AsciiDoc source) published to GitHub Pages | The public documentation site at [neo4j-partners.github.io/neo4j-uc-connector-demos](https://neo4j-partners.github.io/neo4j-uc-connector-demos) |
 
 ---
 

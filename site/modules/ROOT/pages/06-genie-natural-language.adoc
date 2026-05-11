@@ -240,4 +240,4 @@ The consistent EGT readings suggest uniform engine performance across the fleet,
 * https://docs.databricks.com/aws/en/genie/set-up[Set up a Genie space]
 * https://docs.databricks.com/aws/en/genie/conversation-api[Genie Conversation API]
 * https://docs.databricks.com/aws/en/generative-ai/mcp/managed-mcp[Managed MCP servers]
-* https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/getting-started/03-materialized-tables.ipynb[03-materialized-tables.ipynb] -- materialization notebook
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/03-materialized-tables.ipynb[03-materialized-tables.ipynb] -- materialization notebook

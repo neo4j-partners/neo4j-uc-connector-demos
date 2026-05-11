@@ -1,7 +1,7 @@
 site:
   title: Neo4j + Databricks Lakehouse Federation
-  url: https://neo4j-partners.github.io/neo4j-uc-integration
-  start_page: neo4j-uc-integration-docs::index.adoc
+  url: https://neo4j-partners.github.io/neo4j-uc-connector-demos
+  start_page: neo4j-uc-connector-demos-docs::index.adoc
 
 content:
   sources:

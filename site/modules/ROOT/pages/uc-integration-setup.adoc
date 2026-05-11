@@ -321,8 +321,8 @@ The federated queries in this guide use Neo4j Federated JDBC UC Connection for a
 
 == References
 
-* https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/getting-started/01-simple-connect-test.ipynb[01-simple-connect-test.ipynb] -- runnable notebook that creates the UC JDBC connection and validates connectivity
-* https://github.com/neo4j-partners/neo4j-uc-integration/blob/main/docs/neo4j_uc_jdbc_guide.md[Neo4j Federated JDBC UC Connection Setup Guide] - Full configuration reference
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/01-simple-connect-test.ipynb[01-simple-connect-test.ipynb] -- runnable notebook that creates the UC JDBC connection and validates connectivity
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/docs/neo4j_uc_jdbc_guide.md[Neo4j Federated JDBC UC Connection Setup Guide] - Full configuration reference
 * https://neo4j.com/docs/jdbc-manual/current/[Neo4j JDBC Driver Documentation]
 * https://neo4j.com/docs/jdbc-manual/current/sql2cypher/[Neo4j SQL2Cypher Translation Rules]
 * https://docs.databricks.com/query-federation/[Databricks Lakehouse Federation]
