@@ -111,7 +111,6 @@ JDBC_JAR_PATH=/Volumes/<catalog>/<schema>/<volume>/neo4j-unity-catalog-connector
 UC_CATALOG=<catalog>
 UC_SCHEMA=neo4j_getting_started
 UC_VOLUME=aircraft_data
-LAKEHOUSE_CATALOG=
 LAKEHOUSE_SCHEMA=lakehouse
 METADATA_CATALOG=neo4j_metadata
 NODES_SCHEMA=nodes

@@ -204,11 +204,11 @@ def create_lakehouse_helper_tables(spark, cfg: Config, results: ValidationResult
     """Create Delta helper tables required by advanced-patterns/06.
 
     The getting-started notebooks use the tutorial schema. The advanced
-    notebook uses LAKEHOUSE_CATALOG.LAKEHOUSE_SCHEMA for normalized Delta
+    notebook uses UC_CATALOG.LAKEHOUSE_SCHEMA for normalized Delta
     tables, so validation creates those from the same uploaded CSV data instead
     of assuming they already exist.
     """
-    lakehouse_fqn = f"`{cfg.lakehouse_catalog}`.`{cfg.lakehouse_schema}`"
+    lakehouse_fqn = f"`{cfg.uc_catalog}`.`{cfg.lakehouse_schema}`"
     volume_path = cfg.volume_path
 
     print("\n--- Validation Setup: Lakehouse Helper Tables ---")
