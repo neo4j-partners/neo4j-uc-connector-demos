@@ -12,7 +12,7 @@ The Neo4j Federated JDBC UC Connection supports several categories of federated 
 * **Aggregate queries**: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, and `COUNT DISTINCT` are pushed down to Neo4j via `remote_query()`, so only summarized results travel over the network. Useful for fleet-wide metrics, relationship counts, and graph statistics.
 * **Filtered queries**: `WHERE` clauses with equals, `IN`, `AND`, and `IS NOT NULL` are pushed down, letting you narrow results at the source before joining with lakehouse data.
 * **Graph traversal queries**: SQL JOINs across Neo4j node labels (e.g., `Flight NATURAL JOIN DEPARTS_FROM NATURAL JOIN Airport`) are translated to Cypher pattern matches like `(f:Flight)-[:DEPARTS_FROM]\->(a:Airport)`, enabling multi-hop relationship traversals expressed as standard SQL.
-* **Hybrid queries**: Combine `remote_query()` for aggregate graph metrics with the Neo4j Spark Connector for row-level data, then join both with Delta tables in a single notebook. This is the most powerful pattern, using each method for what it does best.
+* **Cross-source aggregate joins**: Combine `remote_query()` graph traversal and aggregate results with Delta tables in one SQL statement. This keeps graph-side reduction in Neo4j and lakehouse aggregation in Databricks.
 * **Cross-source joins**: Results from Neo4j federated queries can be joined with any UC-governed data source including Delta tables, Iceberg tables, lakehouse relational databases, and other JDBC-connected systems, all in a single SQL statement.
 
 == Fraud Detection
@@ -23,7 +23,7 @@ A fraud detection team has transaction data in Delta tables and entity relations
 
 * Aggregate query counting shared-device connections across accounts via `remote_query()`, joined with transaction volume from Delta tables to flag high-risk clusters
 * Graph traversal query following multi-hop paths (Account -> Device -> Account) translated from SQL JOINs to Cypher pattern matches, correlated with transaction anomaly scores from the lakehouse
-* Hybrid query combining a `remote_query()` aggregate for network-wide fraud indicators with Spark Connector row-level data for per-account risk scoring
+* Cross-source query combining `remote_query()` fraud indicators with Delta transaction aggregates for per-account risk scoring
 
 == Knowledge Graph-Enriched ML Pipelines
 
@@ -43,7 +43,7 @@ Organizations modeling supplier networks and dependencies in Neo4j can join that
 
 * Graph traversal query following supplier dependency chains (Supplier -> Component -> Assembly -> Product) to identify single points of failure, joined with inventory levels from Delta tables
 * Aggregate query counting the depth and breadth of each supplier's network via `remote_query()`, cross-joined with logistics performance metrics from the lakehouse
-* Hybrid query combining `remote_query()` aggregates for network-wide supplier concentration risk with Spark Connector row-level data for per-component alternative sourcing analysis
+* Cross-source query combining `remote_query()` aggregates for network-wide supplier concentration risk with lakehouse logistics metrics for per-component alternative sourcing analysis
 
 == Customer 360 and Identity Resolution
 
@@ -63,7 +63,7 @@ Analysts can prototype cross-system queries joining Neo4j graph data with lakeho
 
 * Aggregate query exploring graph metrics via `remote_query()` to assess whether relationship data from Neo4j adds predictive value to an existing lakehouse model
 * Filtered query pulling a subset of graph data for a specific business unit or time range, joined ad hoc with Delta tables to prototype a new dashboard
-* Hybrid query combining multiple federation methods in a single notebook to rapidly evaluate which Neo4j data is worth materializing into the lakehouse long-term
+* Cross-source query combining several `remote_query()` graph aggregates with lakehouse features to rapidly evaluate which Neo4j data is worth materializing long-term
 
 == Learn More
 

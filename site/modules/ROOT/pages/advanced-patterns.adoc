@@ -13,7 +13,7 @@ The `advanced-patterns/` notebooks build on the four-step tutorial in `getting-s
 |Registers Neo4j schema through the Unity Catalog External Metadata API without copying graph data
 
 |https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/advanced-patterns/06_new_federated_queries.ipynb[`06_new_federated_queries.ipynb`]
-|Combines `remote_query()`, Neo4j Spark Connector reads, and Delta joins in additional federated query patterns
+|Demonstrates advanced `remote_query()` SQL patterns, including GROUP BY, HAVING, ORDER BY, OFFSET, DISTINCT, graph traversals, and Delta joins
 
 |https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/advanced-patterns/07_performance_diagnostics.ipynb[`07_performance_diagnostics.ipynb`]
 |Probes latency and throughput characteristics of the federation paths
@@ -34,8 +34,8 @@ For the materialization pattern, see xref:materialization.adoc[Delta Materializa
 
 |Neo4j Spark Connector
 |Not needed
-|Required
-|Required
+|Not needed
+|Only needed for Spark Connector diagnostic cells
 
 |Neo4j Python driver
 |Required
@@ -48,7 +48,7 @@ For the materialization pattern, see xref:materialization.adoc[Delta Materializa
 |Required
 |===
 
-Install the Neo4j Spark Connector as a cluster library when running the advanced federated query or performance notebooks:
+The advanced federated query notebook uses `remote_query()` and does not require the Neo4j Spark Connector. Install the Neo4j Spark Connector only if you run the optional Spark Connector diagnostic cells in the performance notebook:
 
 [source,text]
 ----

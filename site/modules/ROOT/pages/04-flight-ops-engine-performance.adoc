@@ -1,30 +1,13 @@
 = Query 4: Flight Operations + Engine Performance
-:description: Aircraft utilization correlated with engine health metrics using Neo4j Spark Connector
+:description: Aircraft utilization correlated with engine health metrics using remote_query()
 
 Aircraft utilization (flight frequency, route coverage) correlated with engine health metrics (EGT, fuel flow, N1 speed). Shows how heavily-used aircraft perform from an engine perspective.
 
-**Federation Method:** Neo4j Spark Connector → temp view → JOIN with Delta tables
+**Federation Method:** `remote_query()` (Neo4j Federated JDBC UC Connection) + Delta SQL
 
 == Data Flow
 
-image::04-flight-ops-flow.png[Flight Operations + Engine Performance Flow,700]
-
-== Load Neo4j Data
-
-Load flight nodes from Neo4j into a Spark temp view:
-
-[source,python]
-----
-neo4j_flights = spark.read.format("org.neo4j.spark.DataSource") \
-    .option("url", NEO4J_URI) \
-    .option("authentication.type", "basic") \
-    .option("authentication.basic.username", NEO4J_USER) \
-    .option("authentication.basic.password", NEO4J_PASSWORD) \
-    .option("labels", "Flight") \
-    .load()
-
-neo4j_flights.createOrReplaceTempView("neo4j_flights")
-----
+image::04-flight-ops-flow.svg[Flight Operations + Engine Performance Flow,700]
 
 == Federated SQL Query
 
@@ -35,13 +18,15 @@ WITH aircraft_ref AS (
     FROM aircraft
 ),
 flight_activity AS (
-    SELECT
-        aircraftId,
-        COUNT(*) AS total_flights,
-        COUNT(DISTINCT origin) AS unique_origins,
-        COUNT(DISTINCT destination) AS unique_destinations
-    FROM neo4j_flights
-    GROUP BY aircraftId
+    SELECT *
+    FROM remote_query('neo4j_connection',
+        query => 'SELECT aircraftId,
+                         COUNT(*) AS total_flights,
+                         COUNT(DISTINCT origin) AS unique_origins,
+                         COUNT(DISTINCT destination) AS unique_destinations
+                  FROM Flight
+                  GROUP BY aircraftId
+                  HAVING COUNT(*) > 0')
 ),
 engine_health AS (
     SELECT
@@ -73,40 +58,19 @@ ORDER BY f.total_flights DESC
 
 == What This Query Does
 
-* **Neo4j** (Spark Connector): Loads `Flight` nodes, groups by aircraft to compute flight counts and unique origin/destination airports
+* **Neo4j side** (`remote_query()`): Groups `Flight` rows by aircraft to compute flight counts and unique origin/destination airports
 * **Delta** (3-table join): Aggregates engine-specific sensor readings (filtered to `sys.type = 'Engine'`) per aircraft
 * **Federation**: INNER JOINs both on `aircraftId` so only aircraft with both flights and engine data appear
 
-== Actual Output: Load Flights (Databricks Runtime 17.3 LTS)
-
-The following output was captured from a live Databricks cluster using the Neo4j Spark Connector against Neo4j Aura:
-
-[listing]
-....
-Loaded 800 flights from Neo4j
-
-Sample flight data:
-+-----------+-------------+-----------+------+-----------+
-|aircraftId|flight_number|operator   |origin|destination|
-+-----------+-------------+-----------+------+-----------+
-|AC1013     |EX370        |ExampleAir |PHX   |SEA        |
-|AC1014     |SK739        |SkyWays    |SEA   |SFO        |
-|AC1012     |NO833        |NorthernJet|ATL   |LAX        |
-|AC1008     |NO234        |NorthernJet|DFW   |LAX        |
-|AC1001     |EX199        |ExampleAir |MIA   |SFO        |
-+-----------+-------------+-----------+------+-----------+
-only showing top 5 rows
-....
-
 == Actual Output: Federated Query (Databricks Runtime 17.3 LTS)
 
-This federated result was produced live on Databricks, JOINing Neo4j flight data with Delta engine sensor readings:
+This federated result was produced live on Databricks, JOINing `remote_query()` flight aggregates with Delta engine sensor readings:
 
 [listing]
 ....
 Flight Operations + Engine Performance
 Delta: sensor_readings (Engine sensors), sensors, systems, aircraft
-Neo4j: Flight nodes (Spark Connector)
+Neo4j: Flight aggregates via remote_query()
 ==========================================================================================
 +-----------+--------+-----------+-------------+-------+------------+---------+--------+------+
 |tail_number|model   |operator   |total_flights|origins|destinations|avg_egt_c|fuel_kgs|n1_rpm|

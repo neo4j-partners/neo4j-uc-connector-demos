@@ -296,7 +296,7 @@
     },
 
     {
-      "id": "box_neo4j_flights",
+      "id": "box_Flight aggregate",
       "type": "rectangle",
       "x": 30,
       "y": 230,
@@ -319,15 +319,15 @@
       "versionNonce": 100009,
       "isDeleted": false,
       "boundElements": [
-        { "id": "label_neo4j_flights", "type": "text" },
-        { "id": "arrow_neo4j_flights_to_tv_flights", "type": "arrow" }
+        { "id": "label_Flight aggregate", "type": "text" },
+        { "id": "arrow_Flight aggregate_to_tv_flights", "type": "arrow" }
       ],
       "updated": 1700000000000,
       "link": null,
       "locked": false
     },
     {
-      "id": "label_neo4j_flights",
+      "id": "label_Flight aggregate",
       "type": "text",
       "x": 40,
       "y": 242,
@@ -358,7 +358,7 @@
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
-      "containerId": "box_neo4j_flights",
+      "containerId": "box_Flight aggregate",
       "originalText": "\uD83D\uDD37 Neo4j",
       "autoResize": true,
       "lineHeight": 1.25
@@ -438,19 +438,19 @@
       "updated": 1700000000000,
       "link": null,
       "locked": false,
-      "text": "Spark Connector",
+      "text": "remote_query()",
       "fontSize": 12,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "arrow_neo4j_maint_to_tv_maint",
-      "originalText": "Spark Connector",
+      "originalText": "remote_query()",
       "autoResize": true,
       "lineHeight": 1.25
     },
 
     {
-      "id": "arrow_neo4j_flights_to_tv_flights",
+      "id": "arrow_Flight aggregate_to_tv_flights",
       "type": "arrow",
       "x": 192,
       "y": 255,
@@ -481,7 +481,7 @@
       "points": [[0, 0], [138, 0]],
       "lastCommittedPoint": null,
       "startBinding": {
-        "elementId": "box_neo4j_flights",
+        "elementId": "box_Flight aggregate",
         "focus": 0,
         "gap": 2,
         "fixedPoint": null
@@ -523,13 +523,13 @@
       "updated": 1700000000000,
       "link": null,
       "locked": false,
-      "text": "Spark Connector",
+      "text": "remote_query()",
       "fontSize": 12,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
-      "containerId": "arrow_neo4j_flights_to_tv_flights",
-      "originalText": "Spark Connector",
+      "containerId": "arrow_Flight aggregate_to_tv_flights",
+      "originalText": "remote_query()",
       "autoResize": true,
       "lineHeight": 1.25
     },
@@ -593,13 +593,13 @@
       "updated": 1700000000000,
       "link": null,
       "locked": false,
-      "text": "\uD83D\uDCAD neo4j_maintenance\ntemp view",
+      "text": "\uD83D\uDCAD MaintenanceEvent\naggregate",
       "fontSize": 14,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "box_tv_maint",
-      "originalText": "\uD83D\uDCAD neo4j_maintenance\ntemp view",
+      "originalText": "\uD83D\uDCAD MaintenanceEvent\naggregate",
       "autoResize": true,
       "lineHeight": 1.25
     },
@@ -629,7 +629,7 @@
       "isDeleted": false,
       "boundElements": [
         { "id": "label_tv_flights", "type": "text" },
-        { "id": "arrow_neo4j_flights_to_tv_flights", "type": "arrow" },
+        { "id": "arrow_Flight aggregate_to_tv_flights", "type": "arrow" },
         { "id": "arrow_tv_flights_to_join", "type": "arrow" }
       ],
       "updated": 1700000000000,
@@ -663,13 +663,13 @@
       "updated": 1700000000000,
       "link": null,
       "locked": false,
-      "text": "\uD83D\uDCAD neo4j_flights\ntemp view",
+      "text": "\uD83D\uDCAD Flight\naggregate",
       "fontSize": 14,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "box_tv_flights",
-      "originalText": "\uD83D\uDCAD neo4j_flights\ntemp view",
+      "originalText": "\uD83D\uDCAD Flight\naggregate",
       "autoResize": true,
       "lineHeight": 1.25
     },

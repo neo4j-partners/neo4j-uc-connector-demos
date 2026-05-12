@@ -307,7 +307,7 @@ Both federation methods have a place. The right choice depends on the query patt
 |Neo4j Federated JDBC UC Connection with NATURAL JOIN
 
 |Row-level data access (list all aircraft, all flights)
-|Neo4j Spark Connector
+|Neo4j Federated JDBC UC Connection via `remote_query()` or DataFrame API
 
 |Complex Cypher (variable-length paths, graph algorithms)
 |Neo4j Spark Connector
@@ -319,7 +319,7 @@ Both federation methods have a place. The right choice depends on the query patt
 |Neo4j Python Driver
 |===
 
-The federated queries in this guide use Neo4j Federated JDBC UC Connection for aggregate counts (including GROUP BY, HAVING, ORDER BY) and the Spark Connector for row-level data, combining both in a single analysis when needed. Query 5 (Fleet Health Dashboard) demonstrates this hybrid approach.
+The federated queries in this guide use Neo4j Federated JDBC UC Connection through `remote_query()` for graph traversal, row-level graph reads, aggregate counts, GROUP BY, HAVING, and ORDER BY. Query 5 (Fleet Health Dashboard) demonstrates this remote-query-first approach with Delta joins.
 
 == References
 

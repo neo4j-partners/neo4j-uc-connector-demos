@@ -1,13 +1,13 @@
 = Query 5: Fleet Health Dashboard
-:description: Comprehensive fleet health view combining all data sources using both federation methods
+:description: Comprehensive fleet health view combining remote_query() graph aggregates with Delta sensor analytics
 
-The most comprehensive federated query, combining all data sources into a single fleet health view using both federation methods simultaneously.
+The most comprehensive federated query, combining graph aggregates from Neo4j with Delta sensor analytics in a single fleet health view.
 
-**Federation Method:** Hybrid using `remote_query()` + Spark Connector + Delta tables
+**Federation Method:** `remote_query()` (Neo4j Federated JDBC UC Connection) + Delta SQL
 
 == Data Flow
 
-image::05-fleet-health-flow.png[Fleet Health Dashboard Data Flow,800]
+image::05-fleet-health-flow.svg[Fleet Health Dashboard Data Flow,800]
 
 == Graph Traversal Metric (remote_query)
 
@@ -24,7 +24,7 @@ SELECT * FROM remote_query('neo4j_connection',
 
 == Full Dashboard Query
 
-Uses the `neo4j_maintenance` and `neo4j_flights` temp views loaded via Spark Connector in previous queries:
+Uses `remote_query()` CTEs for the Neo4j maintenance and flight aggregates:
 
 [source,sql]
 ----
@@ -45,15 +45,22 @@ sensor_stats AS (
     GROUP BY sys.aircraftId
 ),
 maint AS (
-    SELECT aircraftId, COUNT(*) AS events,
-           SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical
-    FROM neo4j_maintenance
+    SELECT aircraftId, SUM(cnt) AS events,
+           SUM(CASE WHEN severity = 'CRITICAL' THEN cnt ELSE 0 END) AS critical
+    FROM remote_query('neo4j_connection',
+        query => 'SELECT aircraftId, severity, COUNT(*) AS cnt
+                  FROM MaintenanceEvent
+                  GROUP BY aircraftId, severity
+                  HAVING COUNT(*) > 0')
     GROUP BY aircraftId
 ),
 flights AS (
-    SELECT aircraftId, COUNT(*) AS flight_count
-    FROM neo4j_flights
-    GROUP BY aircraftId
+    SELECT *
+    FROM remote_query('neo4j_connection',
+        query => 'SELECT aircraftId, COUNT(*) AS flight_count
+                  FROM Flight
+                  GROUP BY aircraftId
+                  HAVING COUNT(*) > 0')
 )
 SELECT
     a.tail_number,
@@ -76,13 +83,13 @@ ORDER BY COALESCE(m.critical, 0) DESC, COALESCE(m.events, 0) DESC
 == What This Query Does
 
 * **remote_query()**: Graph traversal counting Flight→DEPARTS_FROM→Airport connections (fleet-wide metric)
-* **Spark Connector temp views**: Per-aircraft maintenance events (with severity breakdown) and flight counts from Neo4j
+* **remote_query() CTEs**: Per-aircraft maintenance events (with severity breakdown) and flight counts from Neo4j
 * **Delta tables**: Per-aircraft sensor aggregates across all sensor types (EGT, vibration, fuel flow)
 * **Federation**: LEFT JOINs everything on `aircraftId`, sorted by critical maintenance events descending
 
 == Actual Output (Databricks Runtime 17.3 LTS)
 
-The following output was captured from a live Databricks cluster, combining `remote_query()` graph traversals, Spark Connector temp views, and Delta lakehouse tables in a single federated query:
+The following output was captured from a live Databricks cluster, combining `remote_query()` graph aggregates and Delta lakehouse tables in a single federated query:
 
 [listing]
 ....
@@ -90,7 +97,7 @@ Graph traversal (Flight)-[:DEPARTS_FROM]->(Airport): 800 connections
 
 Fleet Health Dashboard
 Delta: sensor_readings, sensors, systems, aircraft
-Neo4j: MaintenanceEvent + Flight (Spark Connector), graph traversal (remote_query)
+Neo4j: MaintenanceEvent + Flight aggregates via remote_query()
 ====================================================================================================
 +-----------+--------+-----------+-------+------------+--------+-----+-------+--------+--------+
 |tail_number|model   |operator   |flights|maint_events|critical|egt_c|vib_ips|fuel_kgs|readings|
@@ -120,10 +127,9 @@ Neo4j: MaintenanceEvent + Flight (Spark Connector), graph traversal (remote_quer
 
 == Why This Pattern Matters
 
-This query demonstrates that both federation methods can coexist in a single analysis:
+This query demonstrates the remote-query-first federation pattern:
 
-* **`remote_query()`** for fleet-wide graph traversal metrics (no cluster library needed)
-* **Spark Connector** for row-level Neo4j data that needs GROUP BY aggregation
+* **`remote_query()`** for fleet-wide graph traversal metrics and graph-side aggregate pushdown
 * **Delta tables** as the foundation for time-series sensor analytics
 
-The same dual-source pattern used in AgentBricks (Lab 6) works directly in SQL without AI agent routing.
+The result is a single SQL statement governed by Unity Catalog, without a Neo4j Spark Connector dependency.
