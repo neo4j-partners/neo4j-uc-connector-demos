@@ -9,13 +9,21 @@ cd validation
 uv run python validate.py --help
 ```
 
-The script is a thin wrapper around `databricks bundle deploy` and
-`databricks bundle run`. The Databricks Asset Bundle is defined in the repo-root
-`databricks.yml` and `resources/*.yml` (the `notebook_parity`, `extras`, and
-`metadata` jobs). Runtime configuration is read from the repo-root `../.env`,
-converted into `--var name=value` flags, and passed to the bundle commands.
-Neo4j credentials are stored in a Databricks secret scope by `./create_secrets.sh`
-at the repo root.
+The entrypoint is split into small modules under `validation/cli/`:
+
+| Module | Responsibility |
+|--------|----------------|
+| `cli/main.py` | Argument parsing and command dispatch |
+| `cli/config.py` | `.env` loading and bundle variable resolution |
+| `cli/bundle.py` | Databricks Asset Bundle command construction |
+| `cli/process.py` | Subprocess execution and dry-run output |
+| `cli/stages.py` | Full-suite and single-stage job definitions |
+
+The Databricks Asset Bundle is defined in the repo-root `databricks.yml` and
+`resources/*.yml`. Runtime configuration is read from the repo-root `../.env`,
+converted into `--var name=value` flags, and passed to bundle commands. Neo4j
+credentials are stored in a Databricks secret scope by `./create_secrets.sh` at
+the repo root.
 
 ## What Runs By Default
 
@@ -35,6 +43,40 @@ in `getting-started/` and `advanced-patterns/`.
 
 `advanced-patterns/07_performance_diagnostics.ipynb` is a manual notebook for
 investigating latency and throughput. It has no automated validation.
+
+## Stage Commands
+
+Use `stage` when debugging one validation script at a time:
+
+```bash
+uv run python validate.py stage connection
+uv run python validate.py stage federated --skip-deploy
+uv run python validate.py stage materialized --dry-run
+```
+
+The stage jobs live in `resources/stage_jobs.yml`. They are single-task DAB
+jobs, so each command runs exactly one validation script.
+
+| Stage | Script | Typical prerequisite |
+|-------|--------|----------------------|
+| `load-graph` | `run_00_load_graph.py` | Uploaded CSV files and secrets |
+| `connection` | `run_01_connection_setup.py` | `load-graph` has populated Neo4j |
+| `federated` | `run_02_federated_queries.py` | `connection` has created the UC connection |
+| `materialized` | `run_03_materialized_tables.py` | `connection` has created the UC connection |
+| `metadata-api` | `run_05_metadata_sync_external_api.py` | UC connection plus `CREATE_EXTERNAL_METADATA` |
+| `advanced-federated` | `run_06_new_federated_queries.py` | `connection` has created helper Delta tables |
+| `connection-smoke` | `run_extra_connection_smoke.py` | Secrets and connector JAR are configured |
+| `federated-extra` | `run_extra_federated_regression.py` | UC connection and helper Delta tables exist |
+| `metadata-tables` | `run_extra_metadata_sync_tables.py` | UC connection exists |
+| `metadata-grant` | `grant_external_metadata.py` | `DATABRICKS_CLUSTER_ID` is configured |
+
+The full-suite commands still run the multi-task jobs:
+
+```bash
+uv run python validate.py run
+uv run python validate.py extras
+uv run python validate.py metadata
+```
 
 ## Extra Regression Coverage
 
@@ -139,6 +181,7 @@ to run:
 
 ```bash
 uv run python validate.py run --skip-deploy
+uv run python validate.py stage federated --skip-deploy
 ```
 
 To target a non-default bundle target:
@@ -186,11 +229,18 @@ issued through SQL on a workspace cluster.
 ## Common Commands
 
 ```bash
-uv run python validate.py check                  # ruff + databricks bundle validate
+uv run python validate.py check-local            # ruff + py_compile + removed-pattern check
+uv run python validate.py pattern-check          # check scripts for removed connector patterns
+uv run python validate.py check-bundle           # databricks bundle validate
+uv run python validate.py check                  # check-local + check-bundle
+uv run python validate.py deploy                 # databricks bundle deploy
 uv run python validate.py run                    # deploy + run notebook_parity job
 uv run python validate.py extras                 # deploy + run extras job
 uv run python validate.py metadata               # deploy + run metadata job
+uv run python validate.py stage connection       # deploy + run one stage job
 uv run python validate.py run --skip-deploy      # rerun without redeploying
+uv run python validate.py stage federated --dry-run
+uv run python validate.py env                    # show resolved non-secret bundle vars
 uv run python validate.py run --target prod      # use a non-default bundle target
 ```
 

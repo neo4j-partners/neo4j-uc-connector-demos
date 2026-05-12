@@ -62,7 +62,7 @@ The `getting-started/` directory contains four notebooks that walk through the i
 |Creates the UC JDBC connection and runs basic SQL queries against Neo4j
 
 |https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/02-federated-queries.ipynb[`02-federated-queries.ipynb`]
-|Runs federated queries that join Neo4j graph topology with Delta sensor time-series data
+|Runs single-statement federated queries via `remote_query()`, joining Neo4j graph topology with Delta sensor time-series data in pure SQL
 
 |https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/03-materialized-tables.ipynb[`03-materialized-tables.ipynb`]
 |Materializes Neo4j node labels as managed Delta tables for unrestricted SQL and Genie access

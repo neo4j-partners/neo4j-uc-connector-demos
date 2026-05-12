@@ -1,0 +1,107 @@
+# Single-stage validation jobs.
+#
+# These jobs let `validation/validate.py stage <name>` run one validation script
+# at a time for faster debugging. The full-suite jobs remain in
+# notebook_parity_job.yml, extras_job.yml, and metadata_job.yml.
+resources:
+  jobs:
+    stage_load_graph:
+      name: "[${bundle.target}] neo4j-uc stage load-graph"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: load_graph
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_00_load_graph.py
+            parameters: ${var.script_params}
+
+    stage_connection:
+      name: "[${bundle.target}] neo4j-uc stage connection"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: connection_setup
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_01_connection_setup.py
+            parameters: ${var.script_params}
+
+    stage_federated:
+      name: "[${bundle.target}] neo4j-uc stage federated"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: federated_queries
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_02_federated_queries.py
+            parameters: ${var.script_params}
+
+    stage_materialized:
+      name: "[${bundle.target}] neo4j-uc stage materialized"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: materialized_tables
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_03_materialized_tables.py
+            parameters: ${var.script_params}
+
+    stage_metadata_api:
+      name: "[${bundle.target}] neo4j-uc stage metadata-api"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: metadata_sync_external_api
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_05_metadata_sync_external_api.py
+            parameters: ${var.script_params}
+
+    stage_advanced_federated:
+      name: "[${bundle.target}] neo4j-uc stage advanced-federated"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: new_federated_queries
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_06_new_federated_queries.py
+            parameters: ${var.script_params}
+
+    stage_connection_smoke:
+      name: "[${bundle.target}] neo4j-uc stage connection-smoke"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: connection_smoke
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_extra_connection_smoke.py
+            parameters: ${var.script_params}
+
+    stage_federated_extra:
+      name: "[${bundle.target}] neo4j-uc stage federated-extra"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: federated_regression
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_extra_federated_regression.py
+            parameters: ${var.script_params}
+
+    stage_metadata_tables:
+      name: "[${bundle.target}] neo4j-uc stage metadata-tables"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: metadata_sync_tables
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_extra_metadata_sync_tables.py
+            parameters: ${var.script_params}
+
+    stage_metadata_grant:
+      name: "[${bundle.target}] neo4j-uc stage metadata-grant"
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: grant_external_metadata
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/grant_external_metadata.py
+            parameters:
+              - ${var.metadata_grant_principal}

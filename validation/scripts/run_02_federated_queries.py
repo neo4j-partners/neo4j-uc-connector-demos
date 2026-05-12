@@ -166,10 +166,11 @@ def main() -> None:
             LEFT JOIN aircraft_sensor_health s ON m.aircraftId = s.aircraftId
             ORDER BY m.maint_count DESC
             """
-        ).cache()
+        )
+        rows = result.collect()
         print("  Maintenance count + avg sensor reading per aircraft:")
-        result.show(10, truncate=False)
-        row_count = result.count()
+        spark.createDataFrame(rows, result.schema).show(10, truncate=False)
+        row_count = len(rows)
         results.record(
             "Federated Query 2: maintenance severity + sensor health",
             row_count == 20,
