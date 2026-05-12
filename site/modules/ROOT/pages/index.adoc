@@ -182,7 +182,7 @@ Lakebase, Databricks' managed PostgreSQL, is already an official federated data 
 1. Lakehouse tables in Unity Catalog: `aircraft`, `systems`, `sensors`, `sensor_readings`
 2. Neo4j Federated JDBC UC Connection configured (see https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/docs/neo4j_uc_jdbc_guide.md[setup guide])
 3. Neo4j Spark Connector installed as cluster library (for queries 3-5)
-4. Databricks secret scope configured via `cd validation && uv run python validate.py secrets` (default name: `neo4j-uc-demos`)
+4. Databricks secret scope configured via `./create_secrets.sh` (default name: `neo4j-uc-demos`)
 
 == References
 

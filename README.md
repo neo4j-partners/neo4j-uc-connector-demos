@@ -58,8 +58,7 @@ Set `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `DATABRICKS_PROFILE`, and the Neo4j 
 CSV files for the aircraft digital twin dataset are in `getting-started/data/aircraft_digital_twin_data/`. Upload them to your UC Volume:
 
 ```bash
-cd validation
-uv run python validate.py data
+./getting-started/upload_data.sh
 ```
 
 ### Create Secrets
@@ -67,8 +66,7 @@ uv run python validate.py data
 Notebooks and scripts retrieve Neo4j credentials from Databricks secrets rather than hardcoded values. Provision the secret scope from the root `.env`:
 
 ```bash
-cd validation
-uv run python validate.py secrets
+./create_secrets.sh
 ```
 
 This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores `NEO4J_USERNAME` and `NEO4J_PASSWORD`.

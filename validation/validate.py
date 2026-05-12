@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import argparse
 import compileall
+import functools
 import os
 import subprocess
 import sys
-import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.errors import DatabricksError, NotFound, ResourceAlreadyExists
-from databricks.sdk.service.catalog import VolumeType
+from databricks.sdk.errors import DatabricksError
 from databricks.sdk.service.jobs import SparkPythonTask, SubmitTask
 from databricks.sdk.service.workspace import ImportFormat
 from databricks_job_runner import Runner
@@ -26,7 +26,6 @@ SECRET_KEYS = ("NEO4J_USERNAME", "NEO4J_PASSWORD")
 
 VALIDATION_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = VALIDATION_DIR.parent
-DATA_DIR = PROJECT_DIR / "getting-started" / "data" / "aircraft_digital_twin_data"
 ENV_FILE = PROJECT_DIR / ".env"
 
 
@@ -79,17 +78,6 @@ EXTRAS = Suite(
     ),
 )
 
-PERFORMANCE = Suite(
-    name="performance-diagnostics",
-    scripts=(
-        ScriptSpec(
-            "run_07_performance_diagnostics.py",
-            "advanced-patterns/07_performance_diagnostics.ipynb",
-            optional=True,
-        ),
-    ),
-)
-
 METADATA = Suite(
     name="metadata",
     scripts=(
@@ -123,9 +111,6 @@ def main(argv: list[str] | None = None) -> int:
     except DatabricksError as exc:
         print(f"ERROR: Databricks API request failed: {exc}", file=sys.stderr)
         return 1
-    except KeyboardInterrupt:
-        print("\nInterrupted.", file=sys.stderr)
-        return 130
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -135,9 +120,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_run = sub.add_parser("run", help="Run the notebook-parity validation suite")
-    add_common_suite_args(p_run)
-    p_run.add_argument("--skip-data", action="store_true")
-    p_run.add_argument("--skip-secrets", action="store_true")
+    p_run.add_argument(
+        "--compute",
+        choices=["cluster", "serverless"],
+        default=None,
+        help="Override compute mode for submitted scripts",
+    )
     p_run.add_argument("--skip-upload", action="store_true")
     p_run.add_argument("--include-extras", action="store_true")
     p_run.add_argument("--include-performance", action="store_true")
@@ -145,8 +133,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.set_defaults(func=cmd_run)
 
     p_metadata = sub.add_parser("metadata", help="Run metadata validation")
-    add_common_suite_args(p_metadata)
-    p_metadata.add_argument("--skip-secrets", action="store_true")
+    p_metadata.add_argument(
+        "--compute",
+        choices=["cluster", "serverless"],
+        default=None,
+        help="Override compute mode for submitted scripts",
+    )
     p_metadata.add_argument("--skip-grant", action="store_true")
     p_metadata.add_argument("--skip-upload", action="store_true")
     p_metadata.add_argument(
@@ -163,15 +155,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip uv sync --locked before syntax checks",
     )
     p_check.set_defaults(func=cmd_check)
-
-    p_data = sub.add_parser("data", help="Upload sample CSV data to the UC Volume")
-    p_data.set_defaults(func=cmd_data)
-
-    p_secrets = sub.add_parser(
-        "secrets",
-        help="Create/update the Databricks secret scope from .env",
-    )
-    p_secrets.set_defaults(func=cmd_secrets)
 
     p_grant = sub.add_parser(
         "grant",
@@ -218,15 +201,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def add_common_suite_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--compute",
-        choices=["cluster", "serverless"],
-        default=None,
-        help="Override compute mode for submitted scripts",
-    )
-
-
 def cmd_run(args: argparse.Namespace) -> int:
     print_header("validation: Notebook Parity Suite")
     run_local_checks(sync=not args.no_sync)
@@ -235,18 +209,6 @@ def cmd_run(args: argparse.Namespace) -> int:
         scripts.extend(EXTRAS.scripts)
     if args.include_performance:
         scripts.extend(PERFORMANCE.scripts)
-    validate_script_files(scripts)
-    print_manifest_summary()
-
-    if args.skip_data:
-        print_step("Skipping sample data upload (--skip-data)")
-    else:
-        upload_sample_data()
-
-    if args.skip_secrets:
-        print_step("Skipping secrets (--skip-secrets)")
-    else:
-        provision_secrets()
 
     if args.skip_upload:
         print_step("Skipping script upload (--skip-upload)")
@@ -260,12 +222,6 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_metadata(args: argparse.Namespace) -> int:
     print_header("validation: Metadata Validation")
     run_local_checks(sync=not args.no_sync)
-    validate_script_files(METADATA.scripts)
-
-    if args.skip_secrets:
-        print_step("Skipping secrets (--skip-secrets)")
-    else:
-        provision_secrets()
 
     if args.skip_grant:
         print_step("Skipping CREATE_EXTERNAL_METADATA grant (--skip-grant)")
@@ -284,16 +240,6 @@ def cmd_metadata(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     run_local_checks(sync=not args.no_sync)
-    return 0
-
-
-def cmd_data(_: argparse.Namespace) -> int:
-    upload_sample_data()
-    return 0
-
-
-def cmd_secrets(_: argparse.Namespace) -> int:
-    provision_secrets()
     return 0
 
 
@@ -351,7 +297,6 @@ def run_local_checks(*, sync: bool) -> None:
             f"got {actual_version}"
         )
     print(f"  databricks-job-runner: {actual_version}")
-    print(f"  Runner: {Runner}")
 
     paths = [VALIDATION_DIR / "validate.py", VALIDATION_DIR / "scripts"]
     tools_dir = VALIDATION_DIR / "tools"
@@ -366,111 +311,6 @@ def run_local_checks(*, sync: bool) -> None:
         if not ok:
             raise RunnerError(f"Python compile check failed for {path}")
     print("  Python syntax checks passed")
-    ensure_no_shell_scripts()
-    print("  Shell entrypoints removed")
-    print()
-
-
-def ensure_no_shell_scripts() -> None:
-    ignored_dirs = {
-        ".git",
-        ".venv",
-        ".uv-cache",
-        "__pycache__",
-        "node_modules",
-    }
-    shell_files = sorted(
-        path
-        for path in PROJECT_DIR.rglob("*.sh")
-        if not ignored_dirs.intersection(path.relative_to(PROJECT_DIR).parts)
-    )
-    if shell_files:
-        rel = "\n".join(f"  - {path.relative_to(PROJECT_DIR)}" for path in shell_files)
-        raise RunnerError(f"shell scripts remain in the repo:\n{rel}")
-
-
-def upload_sample_data() -> None:
-    print_step("Uploading sample CSV data")
-    require_env_keys("UC_CATALOG", "UC_SCHEMA", "UC_VOLUME")
-    if not DATA_DIR.is_dir():
-        raise RunnerError(f"{DATA_DIR} not found")
-
-    catalog = env_value("UC_CATALOG")
-    schema = env_value("UC_SCHEMA")
-    volume = env_value("UC_VOLUME")
-    volume_path = f"/Volumes/{catalog}/{schema}/{volume}"
-
-    print(f"  Volume: {volume_path}")
-    ensure_schema(catalog, schema)
-    ensure_volume(catalog, schema, volume)
-
-    for csv_file in sorted(DATA_DIR.glob("*.csv")):
-        remote_path = f"{volume_path}/{csv_file.name}"
-        print(f"  {csv_file.name} -> {remote_path}")
-        with csv_file.open("rb") as fh:
-            workspace_client().files.upload(
-                file_path=remote_path,
-                contents=fh,
-                overwrite=True,
-            )
-    print("  Upload complete")
-    print()
-
-
-def ensure_schema(catalog: str, schema: str) -> None:
-    full_name = f"{catalog}.{schema}"
-    try:
-        workspace_client().schemas.get(full_name)
-        print(f"  Schema exists: {full_name}")
-    except NotFound:
-        created = workspace_client().schemas.create(name=schema, catalog_name=catalog)
-        print(f"  Created schema: {created.full_name}")
-
-
-def ensure_volume(catalog: str, schema: str, volume: str) -> None:
-    full_name = f"{catalog}.{schema}.{volume}"
-    try:
-        workspace_client().volumes.read(full_name)
-        print(f"  Volume exists: {full_name}")
-    except NotFound:
-        created = workspace_client().volumes.create(
-            catalog_name=catalog,
-            schema_name=schema,
-            name=volume,
-            volume_type=VolumeType.MANAGED,
-        )
-        print(f"  Created volume: {created.full_name}")
-
-
-def provision_secrets() -> None:
-    print_step("Creating/updating Databricks secrets from .env")
-    require_env_keys("DATABRICKS_SECRET_SCOPE")
-    scope = env_value("DATABRICKS_SECRET_SCOPE")
-
-    print(f"  Scope: {scope}")
-    try:
-        workspace_client().secrets.create_scope(scope=scope)
-        print("  Created scope")
-    except ResourceAlreadyExists:
-        print("  Scope already exists")
-    except DatabricksError as exc:
-        if "already exists" in str(exc).lower():
-            print("  Scope already exists")
-        else:
-            raise
-
-    for key in SECRET_KEYS:
-        value = env_value(key)
-        if not value:
-            print(f"  WARNING: {key} has no value in .env, skipping")
-            continue
-        workspace_client().secrets.put_secret(
-            scope=scope,
-            key=key,
-            string_value=value,
-        )
-        print(f"  Put secret: {key}")
-    print("  Secrets updated")
     print()
 
 
@@ -485,21 +325,13 @@ def grant_external_metadata(principal: str | None) -> None:
     print(f"  Principal: {principal}")
     print(f"  Cluster: {cluster_id}")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        grant_file = Path(tmp) / "grant_external_metadata.py"
-        grant_file.write_text(GRANT_TASK_SOURCE)
-
-        workspace_client().workspace.mkdirs(remote_dir)
-        try:
-            workspace_client().workspace.delete(remote_file)
-        except NotFound:
-            pass
-        workspace_client().workspace.upload(
-            path=remote_file,
-            content=grant_file.read_bytes(),
-            format=ImportFormat.AUTO,
-            overwrite=True,
-        )
+    workspace_client().workspace.mkdirs(remote_dir)
+    workspace_client().workspace.upload(
+        path=remote_file,
+        content=GRANT_TASK_SOURCE.encode(),
+        format=ImportFormat.AUTO,
+        overwrite=True,
+    )
 
     task = SubmitTask(
         task_key="grant",
@@ -529,21 +361,14 @@ def grant_external_metadata(principal: str | None) -> None:
 
 
 def current_workspace_user() -> str:
-    user = workspace_client().current_user.me()
-    for attr in ("user_name", "userName"):
-        value = getattr(user, attr, None)
-        if value:
-            return value
-    emails = getattr(user, "emails", None) or []
-    if emails:
-        value = getattr(emails[0], "value", None)
-        if value:
-            return value
-    raise RunnerError("could not determine current workspace user")
+    user_name = workspace_client().current_user.me().user_name
+    if not user_name:
+        raise RunnerError("could not determine current workspace user")
+    return user_name
 
 
 def run_suite(
-    scripts: list[ScriptSpec] | tuple[ScriptSpec, ...],
+    scripts: Sequence[ScriptSpec],
     *,
     compute: str | None,
     title: str,
@@ -567,38 +392,6 @@ def run_suite(
         return 1
     print("  Result: ALL PASSED")
     return 0
-
-
-def validate_script_files(scripts: list[ScriptSpec] | tuple[ScriptSpec, ...]) -> None:
-    missing = [
-        spec.name
-        for spec in scripts
-        if not (VALIDATION_DIR / "scripts" / spec.name).is_file()
-    ]
-    if missing:
-        raise RunnerError(
-            "validation script files are missing:\n"
-            + "".join(f"  - {name}\n" for name in missing)
-        )
-
-
-def print_manifest_summary() -> None:
-    manifest = VALIDATION_DIR / "coverage_manifest.md"
-    print_step("Coverage manifest")
-    if not manifest.is_file():
-        print("  coverage_manifest.md not found")
-        print()
-        return
-
-    in_table = False
-    for line in manifest.read_text().splitlines():
-        if line.startswith("| Notebook "):
-            in_table = True
-        if in_table:
-            if not line.strip():
-                break
-            print(line)
-    print()
 
 
 def run_process(command: list[str], *, cwd: Path) -> None:
@@ -636,18 +429,21 @@ def env_value(key: str) -> str:
     return os.environ.get(key, "")
 
 
+@functools.cache
 def workspace_client() -> WorkspaceClient:
-    existing = getattr(workspace_client, "_client", None)
-    if existing is not None:
-        return existing
     profile = env_value("DATABRICKS_PROFILE") or None
-    client = WorkspaceClient(profile=profile) if profile else WorkspaceClient()
-    workspace_client._client = client
-    return client
+    try:
+        return WorkspaceClient(profile=profile) if profile else WorkspaceClient()
+    except ValueError as exc:
+        raise RunnerError(str(exc)) from exc
+
+
+_ENV_LOADED = False
 
 
 def ensure_env_loaded() -> None:
-    if getattr(ensure_env_loaded, "_loaded", False):
+    global _ENV_LOADED
+    if _ENV_LOADED:
         return
     if not ENV_FILE.is_file():
         raise RunnerError(
@@ -655,7 +451,7 @@ def ensure_env_loaded() -> None:
         )
     for key, value in parse_env_file(ENV_FILE).items():
         os.environ.setdefault(key, value)
-    ensure_env_loaded._loaded = True
+    _ENV_LOADED = True
 
 
 def parse_env_file(path: Path) -> dict[str, str]:

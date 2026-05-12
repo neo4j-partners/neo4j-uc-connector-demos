@@ -74,12 +74,11 @@ cp .env.sample .env
 
 === 2. Create the Databricks Secret Scope
 
-`validate.py secrets` reads `NEO4J_USERNAME` and `NEO4J_PASSWORD` from `.env`, creates the secret scope if it doesn't exist, and stores the credentials:
+`create_secrets.sh` reads `NEO4J_USERNAME` and `NEO4J_PASSWORD` from `.env`, creates the secret scope if it doesn't exist, and stores the credentials:
 
 [source,bash]
 ----
-cd validation
-uv run python validate.py secrets
+./create_secrets.sh
 ----
 
 The script uses `DATABRICKS_PROFILE` from `.env` when it is set. Leave
@@ -96,12 +95,11 @@ password = ws.dbutils.secrets.get(scope="neo4j-uc-demos", key="NEO4J_PASSWORD")
 
 === 3. Upload CSV Data to the UC Volume
 
-`validate.py data` uploads the aircraft digital twin CSV files from `getting-started/data/aircraft_digital_twin_data/` to the UC Volume path defined by `UC_CATALOG`, `UC_SCHEMA`, and `UC_VOLUME` in `.env`:
+`getting-started/upload_data.sh` uploads the aircraft digital twin CSV files from `getting-started/data/aircraft_digital_twin_data/` to the UC Volume path defined by `UC_CATALOG`, `UC_SCHEMA`, and `UC_VOLUME` in `.env`:
 
 [source,bash]
 ----
-cd validation
-uv run python validate.py data
+./getting-started/upload_data.sh
 ----
 
 This writes 17 CSV files to `/Volumes/<catalog>/<schema>/<volume>/`. The JDBC JAR must also be in a UC Volume before creating the connection — upload it manually to the path set in `JDBC_JAR_PATH`.
@@ -141,7 +139,7 @@ Upload it to a UC Volume path, for example `/Volumes/catalog/schema/jars/`. The 
 
 === Credentials in Databricks Secrets
 
-Store Neo4j credentials in a Databricks secret scope rather than hardcoding them. `validation/validate.py secrets` provisions a scope from `.env` — by default the scope is named `neo4j-uc-demos` (configurable via `DATABRICKS_SECRET_SCOPE`) and holds `NEO4J_USERNAME` and `NEO4J_PASSWORD`:
+Store Neo4j credentials in a Databricks secret scope rather than hardcoding them. `create_secrets.sh` provisions a scope from `.env` — by default the scope is named `neo4j-uc-demos` (configurable via `DATABRICKS_SECRET_SCOPE`) and holds `NEO4J_USERNAME` and `NEO4J_PASSWORD`:
 
 [source,python]
 ----
@@ -151,7 +149,7 @@ NEO4J_USERNAME = dbutils.secrets.get(SCOPE_NAME, "NEO4J_USERNAME")
 NEO4J_PASSWORD = dbutils.secrets.get(SCOPE_NAME, "NEO4J_PASSWORD")
 ----
 
-`validation/validate.py secrets` reads `.env` and configures these secrets automatically using the Databricks SDK.
+`create_secrets.sh` reads `.env` and configures these secrets using the Databricks CLI.
 
 == Creating the Neo4j Federated JDBC UC Connection
 

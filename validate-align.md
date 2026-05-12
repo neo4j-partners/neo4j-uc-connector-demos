@@ -7,9 +7,8 @@ and `advanced-patterns/` still work without manually running the notebooks.
 
 The intended flow is:
 
-1. Upload sample data with `cd validation && uv run python validate.py data`.
-2. Create or update Databricks secrets with
-   `cd validation && uv run python validate.py secrets`.
+1. Upload sample data with `./getting-started/upload_data.sh`.
+2. Create or update Databricks secrets with `./create_secrets.sh`.
 3. Run validation jobs that execute the same setup, SQL, DataFrame, metadata,
    and materialization logic as the notebooks.
 4. Exclude performance diagnostics from the default run unless explicitly
@@ -79,10 +78,10 @@ Notes:
 
 Status: Complete
 
-- [x] Update the default validation path to run `validate.py data` before
-      submitting Databricks jobs.
-- [x] Update the default validation path to run `validate.py secrets` before
-      submitting Databricks jobs.
+- [x] Document `./getting-started/upload_data.sh` as the data upload step run
+      before submitting Databricks jobs.
+- [x] Document `./create_secrets.sh` as the secret-scope provisioning step run
+      before submitting Databricks jobs.
 - [x] Ensure `run_00_load_graph.py` is uploaded and submitted before all query,
       materialization, and metadata jobs.
 - [x] Ensure `run_01_connection_setup.py` creates the Unity Catalog schema and
@@ -144,8 +143,6 @@ Notes:
 - Exact code identity may not be practical for configuration, printing, or
   assertions. The important target is identical Spark SQL, DataFrame, JDBC,
   metadata API, and materialization behavior.
-- Intentional differences are now recorded in
-  `validation/coverage_manifest.md`.
 
 ### Phase 4: Separate Notebook Parity From Extra Regression Coverage
 
@@ -174,32 +171,6 @@ Notes:
 - Do not delete useful checks just because they are not notebook parity. The goal
   is clarity and alignment, not reduced coverage.
 - Broader checks now run only with `uv run python validate.py run --include-extras`.
-
-### Phase 5: Add A Coverage Manifest
-
-Status: Complete
-
-- [x] Add a simple manifest that maps notebooks, sections, and code cells to
-      validation scripts.
-- [x] Include every non-performance notebook in the manifest.
-- [x] Mark `advanced-patterns/07_performance_diagnostics.ipynb` as optional.
-- [x] Record any intentional differences between notebook code and validation
-      code.
-- [x] Make validation print the manifest coverage summary at the start or end of
-      the run.
-
-Validation:
-
-- [x] The manifest can be reviewed to answer which notebook sections are covered.
-- [x] New notebook sections require a manifest update before validation is
-      considered aligned.
-
-Notes:
-
-- This can start as Markdown or YAML. The first version should optimize for
-  reviewability over automation.
-- The manifest lives at `validation/coverage_manifest.md` and is printed by
-  `validation/validate.py run`.
 
 ### Phase 6: Keep Performance Optional
 
@@ -234,10 +205,11 @@ Notes:
 - [ ] A fresh configured workspace can run the aligned validation from sample
       data upload through graph load, connection setup, query validation,
       materialization, metadata sync, and advanced SQL validation. *(Requires
-      a live workspace run; verified by executing `uv run python validate.py run`
+      a live workspace run; verified by executing `./getting-started/upload_data.sh`,
+      `./create_secrets.sh`, then `cd validation && uv run python validate.py run`
       against a fresh-configured Databricks workspace.)*
-- [x] Every non-performance notebook has a direct validation script or a manifest
-      entry explaining why it is intentionally excluded.
+- [x] Every non-performance notebook has a direct validation script, or its
+      omission from the default suite is documented in `validation/README.md`.
 - [x] Validation executes the same core SQL, DataFrame, JDBC, metadata API, and
       materialization behavior as the notebooks.
 - [x] Default validation excludes performance diagnostics.
