@@ -141,14 +141,20 @@ OPTIONS (
 
 ### Query Neo4j
 
-```python
-df = spark.read.format("jdbc") \
-    .option("databricks.connection", "neo4j_connection") \
-    .option("query", "SELECT COUNT(*) AS cnt FROM Flight") \
-    .option("customSchema", "cnt LONG") \
-    .load()
-df.show()
+The recommended pattern is `remote_query()` — a single SQL statement that calls the UC connection and can be joined with Delta tables in the same query:
+
+```sql
+SELECT operator, flight_count
+FROM remote_query('neo4j_connection',
+    query => 'SELECT operator, COUNT(*) AS flight_count
+              FROM Flight
+              GROUP BY operator
+              HAVING COUNT(*) > 0'
+)
+ORDER BY flight_count DESC
 ```
+
+The aggregation runs inside Neo4j; only summarized rows cross the wire. The trailing `HAVING COUNT(*) > 0` is a no-op that works around a Databricks `remote_query()` caching quirk on warm clusters (see `site/modules/ROOT/pages/troubleshooting.adoc`). The getting-started notebooks build on this pattern to join Neo4j-sourced rows with Delta tables in single-statement federated queries.
 
 ---
 

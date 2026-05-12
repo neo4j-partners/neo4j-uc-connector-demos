@@ -219,7 +219,9 @@ Here are the translations validated against the test suite:
 
 The `NATURAL JOIN` syntax maps to Cypher relationship traversals. The first table is the source node label, the middle "table" is the relationship type, and the last table is the target node label. This is the mechanism behind the graph traversal counts in the federated queries.
 
-== The customSchema Requirement
+== The customSchema Requirement (DataFrame API only)
+
+This section applies to the Spark DataFrame API. `remote_query()` handles schema inference internally and does not require `customSchema`.
 
 Spark's JDBC reader runs a schema inference step before executing any query. It sends a modified version of the query with `WHERE 1=0` to get column metadata without fetching actual data. Neo4j's JDBC driver returns `NullType()` for all columns during this inference step, which causes Spark to fail with a `No column has been read prior to this call` error.
 
@@ -245,7 +247,23 @@ Every query through the Neo4j Federated JDBC UC Connection needs `customSchema`.
 
 == Two Ways to Query
 
-Once the connection exists, there are two ways to use it.
+Once the connection exists, there are two ways to use it. **`remote_query()` is the recommended pattern** — it is pure SQL, supports single-statement joins with Delta tables, and is what the getting-started notebooks use. The DataFrame API is a secondary option for cases that need fine-grained PySpark control or hit a `remote_query()` limitation.
+
+=== remote_query() SQL Function (recommended)
+
+The `remote_query()` function lets a single SQL statement query a foreign source through the UC connection:
+
+[source,sql]
+----
+SELECT * FROM remote_query(
+    'neo4j_connection',
+    query => 'SELECT COUNT(*) AS cnt FROM Flight'
+)
+----
+
+Databricks sends the inner SQL string verbatim through the UC connection. On the Neo4j side, the JDBC driver's SQL-to-Cypher translator parses the SQL and emits Cypher. Because the result is a SQL relation, it can be joined with Delta tables in the same `spark.sql(...)` call — single-statement federation. `remote_query()` also handles schema inference internally, so `customSchema` is not required.
+
+NOTE: `remote_query()` has a result-reuse bug that can return an empty result set for pure `GROUP BY` queries on warm clusters. Adding `HAVING COUNT(*) > 0` is semantically a no-op but forces re-evaluation. See xref:troubleshooting.adoc[Troubleshooting] for details.
 
 === Spark DataFrame API
 
@@ -267,21 +285,7 @@ df.show()
 # +----+
 ----
 
-This returns a standard Spark DataFrame that can be joined with Delta tables, registered as a temp view, or used in any Spark operation.
-
-=== remote_query() SQL Function
-
-The `remote_query()` function lets SQL queries reference the connection directly, without PySpark:
-
-[source,sql]
-----
-SELECT * FROM remote_query(
-    'neo4j_connection',
-    query => 'SELECT COUNT(*) AS cnt FROM Flight'
-)
-----
-
-This is pure SQL, which makes it useful for dashboards, SQL notebooks, and cases where the query result can be used directly without further DataFrame transformations. It also handles schema inference internally, so `customSchema` is not required.
+This returns a standard Spark DataFrame and is useful when you need PySpark transformations between the Neo4j read and the join — for example, conditional logic, multiple intermediate DataFrames, or programmatic schema handling. The DataFrame API requires `customSchema` on every read (see the previous section).
 
 For the complete validated pattern list, SQL translation examples, and unsupported patterns, see xref:sql-reference.adoc[SQL Reference].
 

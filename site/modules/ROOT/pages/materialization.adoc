@@ -1,7 +1,7 @@
 = Delta Materialization: Copying Neo4j Graph Data into Unity Catalog
 :description: Pattern for materializing Neo4j node types as Delta tables, enabling Genie, AI/BI dashboards, and SQL analytics without per-query JDBC overhead
 
-The JDBC federation approach works well for aggregate queries that run on demand. But some tools, such as Genie Spaces, AI/BI dashboards, and general-purpose SQL notebooks, expect Delta tables, not JDBC connections. Materialization solves this by reading all Neo4j node types once through the UC JDBC connection and writing them as Delta tables in the Unity Catalog schema. Once materialized, these tables join with the `sensor_readings` Delta table using standard Spark SQL, with no `customSchema` requirement and no JDBC round-trip per query.
+Single-statement federation via `remote_query()` works well for aggregate queries that run on demand. But some tools, such as Genie Spaces, AI/BI dashboards, and general-purpose SQL notebooks, expect Delta tables, not federated JDBC connections. Materialization solves this by reading all Neo4j node types once through `remote_query()` and writing them as Delta tables in the Unity Catalog schema. Once materialized, these tables join with the `sensor_readings` Delta table using standard Spark SQL, with no `remote_query()` call, JDBC round-trip, or translator limitation per query.
 
 == When to Materialize
 
@@ -16,20 +16,20 @@ For freshness-sensitive queries or exploratory one-off analysis, `remote_query()
 
 == The Materialization Pattern
 
-Each node type follows the same sequence: read via UC JDBC with an explicit `customSchema`, cast all columns to `STRING` to avoid a JDBC `CHAR(0)` write error, then write as a Delta table with `overwriteSchema`:
+Each node type follows the same sequence: read from Neo4j via `remote_query()`, cast all columns to `STRING` for a stable Delta-friendly schema across runs, then write as a Delta table with `overwriteSchema`:
 
 [source,python]
 ----
 from pyspark.sql.types import StringType
 
-def materialize(table_name, query, custom_schema, expected_count):
-    df = spark.read.format("jdbc") \
-        .option("databricks.connection", "neo4j_connection") \
-        .option("query", query) \
-        .option("customSchema", custom_schema) \
-        .load()
+def materialize(table_name, query, expected_count):
+    df = spark.sql(f"""
+        SELECT * FROM remote_query('neo4j_connection',
+            query => '{query}'
+        )
+    """)
 
-    # Cast all columns to STRING to avoid JDBC CHAR(0) Delta write failures
+    # Cast all columns to STRING for a stable, Delta-friendly schema across runs
     for col_name in df.columns:
         df = df.withColumn(col_name, df[col_name].cast(StringType()))
 
@@ -39,7 +39,7 @@ def materialize(table_name, query, custom_schema, expected_count):
         .saveAsTable(f"{schema}.{table_name}")
 ----
 
-The `CHAR(0)` issue appears because the Neo4j JDBC driver returns certain string properties with JDBC type `CHAR(0)` rather than `VARCHAR`. Delta Lake cannot write this type. The cast sidesteps it entirely. For more context on the error, see xref:troubleshooting.adoc#_char_0_error_during_delta_materialization[CHAR(0) Error During Delta Materialization].
+The STRING cast normalizes column types so the Delta write is robust regardless of how `remote_query()` infers types from the JDBC result.
 
 == Node Tables
 
@@ -49,63 +49,57 @@ The following tables materialize all eight node types. Once written, each table 
 ----
 materialize("neo4j_aircraft",
     query="SELECT aircraftId, tail_number, icao24, model, manufacturer, operator FROM Aircraft",
-    custom_schema="aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, manufacturer STRING, operator STRING",
     expected_count=20)
 
 materialize("neo4j_airports",
     query="SELECT airportId, name, city, country, iata, icao FROM Airport",
-    custom_schema="airportId STRING, name STRING, city STRING, country STRING, iata STRING, icao STRING",
     expected_count=12)
 
 materialize("neo4j_systems",
     query="SELECT systemId, aircraftId, type, name FROM System",
-    custom_schema="systemId STRING, aircraftId STRING, type STRING, name STRING",
     expected_count=80)
 
 materialize("neo4j_sensors",
     query="SELECT sensorId, systemId, type, name, unit FROM Sensor",
-    custom_schema="sensorId STRING, systemId STRING, type STRING, name STRING, unit STRING",
     expected_count=160)
 
 materialize("neo4j_components",
     query="SELECT componentId, systemId, type, name FROM Component",
-    custom_schema="componentId STRING, systemId STRING, type STRING, name STRING",
     expected_count=320)
 
 materialize("neo4j_maintenance_events",
     query="SELECT eventId, componentId, systemId, aircraftId, fault, severity, reported_at, corrective_action FROM MaintenanceEvent",
-    custom_schema="eventId STRING, componentId STRING, systemId STRING, aircraftId STRING, fault STRING, severity STRING, reported_at STRING, corrective_action STRING",
     expected_count=300)
 
 materialize("neo4j_flights",
     query="SELECT flightId, flight_number, aircraftId, operator, origin, destination, scheduled_departure, scheduled_arrival FROM Flight",
-    custom_schema="flightId STRING, flight_number STRING, aircraftId STRING, operator STRING, origin STRING, destination STRING, scheduled_departure STRING, scheduled_arrival STRING",
     expected_count=800)
 
 materialize("neo4j_delays",
     query="SELECT delayId, flightId, cause, CAST(minutes AS STRING) AS minutes FROM Delay",
-    custom_schema="delayId STRING, flightId STRING, cause STRING, minutes STRING",
     expected_count=514)
 ----
 
 == Relationship Table via NATURAL JOIN
 
-The aircraft-to-system relationship table is materialized differently. It uses a `NATURAL JOIN` in the JDBC query to traverse the `HAS_SYSTEM` relationship in Neo4j and return a flat table:
+The aircraft-to-system relationship table is materialized by calling `remote_query()` with a `NATURAL JOIN`. The Neo4j JDBC translator rewrites that into a Cypher `MATCH (a:Aircraft)-[:HAS_SYSTEM]->(s:System)` traversal on the Neo4j side:
 
 [source,python]
 ----
-df = spark.read.format("jdbc") \
-    .option("databricks.connection", "neo4j_connection") \
-    .option("query", """
-        SELECT a.aircraftId AS aircraftId, a.model AS model,
-               s.systemId AS systemId, s.type AS systemType, s.name AS systemName,
-               COUNT(*) AS cnt
-        FROM Aircraft a NATURAL JOIN HAS_SYSTEM rel NATURAL JOIN System s
-        GROUP BY a.aircraftId, a.model, s.systemId, s.type, s.name
-    """) \
-    .option("customSchema", "aircraftId STRING, model STRING, systemId STRING, systemType STRING, systemName STRING, cnt LONG") \
-    .load() \
-    .select("aircraftId", "model", "systemId", "systemType", "systemName")
+df = spark.sql(f"""
+    SELECT aircraftId, model, systemId, systemType, systemName
+    FROM remote_query('neo4j_connection',
+        query => 'SELECT a.aircraftId AS aircraftId,
+                         a.model AS model,
+                         s.systemId AS systemId,
+                         s.type AS systemType,
+                         s.name AS systemName,
+                         COUNT(*) AS cnt
+                  FROM Aircraft a NATURAL JOIN HAS_SYSTEM rel NATURAL JOIN System s
+                  GROUP BY a.aircraftId, a.model, s.systemId, s.type, s.name
+                  HAVING COUNT(*) > 0'
+    )
+""")
 
 for col_name in df.columns:
     df = df.withColumn(col_name, df[col_name].cast(StringType()))
@@ -115,6 +109,8 @@ df.write.format("delta") \
     .option("overwriteSchema", "true") \
     .saveAsTable(f"{schema}.neo4j_aircraft_systems")
 ----
+
+The `HAVING COUNT(*) > 0` clause is a semantic no-op that works around a Databricks `remote_query()` caching quirk for pure `GROUP BY` queries on warm clusters. See xref:troubleshooting.adoc[Troubleshooting].
 
 Expected row count: 80 (one row per Aircraft-System pair, matching the 80 System nodes).
 

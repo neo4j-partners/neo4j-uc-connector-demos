@@ -91,7 +91,29 @@ OPTIONS (
 
 ## Querying Neo4j through UC
 
-### Method 1: Spark DataFrame API
+There are two ways to call the UC JDBC connection from Databricks. **`remote_query()` is the recommended pattern** — it is pure SQL, supports single-statement joins with Delta tables, and is what the getting-started notebooks use. The DataFrame API is a secondary option for cases that need fine-grained PySpark control or hit a `remote_query()` limitation.
+
+### Method 1: remote_query() (recommended)
+
+```sql
+SELECT * FROM remote_query(
+    'neo4j_connection',
+    query => 'SELECT COUNT(*) AS cnt FROM Flight'
+)
+```
+
+`remote_query()` is a Databricks SQL table-valued function that sends the inner SQL string verbatim to the foreign source through the UC connection. Databricks treats the result as a relation, so it can be joined with Delta tables in the same `spark.sql(...)` call:
+
+```sql
+SELECT a.aircraftId, AVG(r.value) AS avg_value
+FROM remote_query('neo4j_connection', query => 'SELECT aircraftId FROM Aircraft') AS a
+LEFT JOIN sensor_readings r ON r.aircraftId = a.aircraftId
+GROUP BY a.aircraftId
+```
+
+**Note on the GROUP BY caching quirk:** `remote_query()` can return an empty result for pure `GROUP BY` queries on warm clusters. Adding `HAVING COUNT(*) > 0` (a semantic no-op) forces re-evaluation. See `site/modules/ROOT/pages/troubleshooting.adoc` for the full description.
+
+### Method 2: Spark DataFrame API (secondary)
 
 ```python
 df = spark.read.format("jdbc") \
@@ -103,16 +125,7 @@ df = spark.read.format("jdbc") \
 df.show()
 ```
 
-### Method 2: remote_query() Function
-
-```sql
-SELECT * FROM remote_query(
-    'neo4j_connection',
-    query => 'SELECT COUNT(*) AS cnt FROM Flight'
-)
-```
-
-**Note:** Always use `customSchema` with the DataFrame API. Neo4j JDBC returns `NullType()` during Spark's schema inference, causing errors.
+The DataFrame API returns a Spark DataFrame and is useful when you need PySpark transformations between the Neo4j read and the join. It requires `customSchema` for every query: Neo4j JDBC returns `NullType()` during Spark's schema inference, which fails without an explicit schema hint. `remote_query()` handles schema inference internally and does not need `customSchema`.
 
 ---
 
@@ -308,7 +321,9 @@ See [Neo4j JDBC SQL2Cypher docs](https://neo4j.com/docs/jdbc-manual/current/sql2
 
 ## Best Practices
 
-### 1. Always Use customSchema
+### 1. Always Use customSchema with the DataFrame API
+
+If you use the DataFrame API (Method 2) rather than `remote_query()` (Method 1), every read must include an explicit `customSchema`. Neo4j JDBC returns `NullType()` during Spark's schema inference, which fails without it.
 
 ```python
 # Good
@@ -324,6 +339,8 @@ df = spark.read.format("jdbc") \
     .option("query", "SELECT COUNT(*) AS cnt FROM Flight") \
     .load()
 ```
+
+`remote_query()` (Method 1) handles schema inference internally; the `customSchema` requirement does not apply to it.
 
 ### 2. Use Aggregates and GROUP BY for UC JDBC
 
@@ -355,19 +372,16 @@ OPTIONS (
 ### 5. Create a Helper Function for Tests
 
 ```python
-def query_neo4j(sql_query, schema):
-    """Execute a SQL query against Neo4j via UC JDBC."""
-    return spark.read.format("jdbc") \
-        .option("databricks.connection", "neo4j_connection") \
-        .option("query", sql_query) \
-        .option("customSchema", schema) \
-        .load()
+def query_neo4j(sql_query):
+    """Execute a SQL query against Neo4j via remote_query()."""
+    return spark.sql(f"""
+        SELECT * FROM remote_query('neo4j_connection',
+            query => '{sql_query}'
+        )
+    """)
 
 # Usage
-df = query_neo4j(
-    "SELECT COUNT(*) AS cnt FROM Flight",
-    "cnt LONG"
-)
+df = query_neo4j("SELECT COUNT(*) AS cnt FROM Flight")
 ```
 
 ---
@@ -376,13 +390,17 @@ df = query_neo4j(
 
 | Use Case | Recommended Method | JAR Source |
 |----------|-------------------|------------|
-| Aggregate analytics (COUNT, SUM, etc.) | UC JDBC Connection | UC Volume (`java_dependencies`) |
-| GROUP BY / HAVING analytics | UC JDBC Connection | UC Volume (`java_dependencies`) |
-| Graph traversal counts | UC JDBC with NATURAL JOIN | UC Volume (`java_dependencies`) |
+| Aggregate analytics (COUNT, SUM, etc.) | UC JDBC via `remote_query()` | UC Volume (`java_dependencies`) |
+| GROUP BY / HAVING analytics | UC JDBC via `remote_query()` | UC Volume (`java_dependencies`) |
+| Graph traversal counts | UC JDBC via `remote_query()` with NATURAL JOIN | UC Volume (`java_dependencies`) |
+| Cross-source SQL joins with Delta (single statement) | UC JDBC via `remote_query()` | UC Volume (`java_dependencies`) |
+| Genie / AI/BI Dashboards | Materialized Delta tables (loaded via `remote_query()`) | UC Volume (`java_dependencies`) |
+| PySpark-driven transformations between read and join | UC JDBC via DataFrame API | UC Volume (`java_dependencies`) |
 | Row-level data access | Neo4j Spark Connector | Cluster library (Maven coordinate) |
-| Complex Cypher queries | Neo4j Spark Connector | Cluster library (Maven coordinate) |
+| Complex Cypher queries (variable-length paths, OPTIONAL MATCH) | Neo4j Spark Connector | Cluster library (Maven coordinate) |
 | Relationship property aggregation | Neo4j Spark Connector | Cluster library (Maven coordinate) |
 | Ad-hoc exploration | Neo4j Python Driver | pip package |
+| Loading data into Neo4j (ingest) | Neo4j Python Driver | pip package |
 
 ---
 

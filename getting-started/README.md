@@ -66,17 +66,17 @@ Run this once before the other notebooks.
 
 ### 01: Connection Setup
 
-Creates the `sensor_readings` Delta table from the CSV in the UC Volume, creates and validates the Unity Catalog JDBC connection, and runs basic SQL queries against Neo4j through the connector.
+Creates the Unity Catalog JDBC connection that downstream notebooks use for federation. Validates it with a trivial `remote_query()` call, then runs three basic queries against Neo4j (two `COUNT(*)` queries and a `GROUP BY` aggregate) to confirm SQL-to-Cypher translation works end to end.
 
 The UC JDBC connection created here is reused by notebooks 02 and 03.
 
 ### 02: Federated Queries
 
-Runs three queries that span both systems. Query 1 joins Neo4j graph topology (aircraft → system → sensor via NATURAL JOIN) with Delta sensor statistics. Query 2 combines Neo4j maintenance event counts with Delta sensor averages per aircraft. Query 3 runs pure Neo4j graph analytics on flight operations and delay causes.
+Runs three single-statement federated queries via `remote_query()`. Each `spark.sql()` call embeds a `remote_query()` against the Neo4j JDBC connection and joins the result with Delta tables in pure SQL — no client-side DataFrame join. Query 1 joins Neo4j graph topology (Aircraft → System → Sensor via NATURAL JOIN, translated to Cypher) with Delta sensor statistics. Query 2 combines Neo4j maintenance event counts with Delta sensor averages per aircraft. Query 3 runs pure Neo4j graph analytics on flight operations and delay causes. This notebook also creates the `sensor_readings` Delta table in its setup section.
 
 ### 03: Materialized Tables
 
-Reads all Neo4j node labels via UC JDBC and writes them as managed Delta tables in Unity Catalog. Once materialized, the data supports full SQL: GROUP BY, ORDER BY, WHERE, aggregations, DISTINCT, and multi-table JOINs, all without JDBC at query time. Four federated queries then join the materialized graph tables with `sensor_readings` in pure SQL.
+Reads all Neo4j node labels via `remote_query()` and writes them as managed Delta tables in Unity Catalog. Once materialized, the data supports full Spark SQL — GROUP BY, ORDER BY, WHERE, aggregations, DISTINCT, multi-table JOINs — with no JDBC or `remote_query()` at query time. Four analytical queries then join the materialized graph tables with `sensor_readings` in pure SQL.
 
 ## Setup
 
@@ -181,14 +181,14 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 3. Create secrets: `./create_secrets.sh`
 4. Open each notebook. The configuration cell reads from the Databricks secret scope populated by `./create_secrets.sh`, so the notebooks do not need local `.env` values entered manually.
 5. Run `00-load-graph.ipynb` to load the aircraft graph into Neo4j.
-6. Run `01-neo4j-uc-connection-setup.ipynb` to create the `sensor_readings` table and UC JDBC connection.
-7. Run `02-federated-queries.ipynb` for live federated queries.
+6. Run `01-neo4j-uc-connection-setup.ipynb` to create the UC JDBC connection and validate it with `remote_query()`.
+7. Run `02-federated-queries.ipynb` for live federated queries (this notebook also creates the `sensor_readings` Delta table in its setup section).
 8. Run `03-materialized-tables.ipynb` to materialize graph data as Delta tables.
 
 ## Tradeoffs
 
-**Real-time JDBC vs. materialized tables.** The UC JDBC connection in notebook 02 queries Neo4j on every read, so results reflect the current graph state. But SQL operations are limited to what the connector's SQL-to-Cypher translator supports (aggregates, WHERE, GROUP BY, ORDER BY, LIMIT, NATURAL JOINs mapped to graph traversals). Materialized tables in notebook 03 support unrestricted SQL but show a snapshot that must be refreshed.
+**Live `remote_query()` vs. materialized tables.** Notebook 02 calls Neo4j on every read via `remote_query()`, so results reflect the current graph state. The inner SQL is limited to what the connector's SQL-to-Cypher translator supports (aggregates, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT, NATURAL JOIN traversals). Materialized tables in notebook 03 support unrestricted Spark SQL but show a snapshot that must be refreshed.
 
-**camelCase properties.** Neo4j best practice uses camelCase for property names (`aircraftId`, `sensorId`, `flightId`). Graph properties and Delta tables in these notebooks follow that convention. Raw CSV import headers may use snake_case, but notebook 01 normalizes them when creating Delta tables.
+**camelCase properties.** Neo4j best practice uses camelCase for property names (`aircraftId`, `sensorId`, `flightId`). Graph properties and materialized Delta tables in these notebooks follow that convention. Raw CSV import headers may use snake_case, but the notebooks normalize them when creating Delta tables.
 
 **Data volume.** The dataset uses 20 aircraft and 172,800 sensor readings, small enough for quick iteration. The same patterns apply to larger graphs, though materialization becomes more important as graph size and query latency grow.
