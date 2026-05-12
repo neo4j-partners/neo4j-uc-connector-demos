@@ -160,7 +160,7 @@ Spark SQL Engine
           neo4j_airports, neo4j_systems, neo4j_sensors
 ----
 
-Everything flows through Unity Catalog. No Spark Connector, no direct Bolt connection, no Python driver.
+Everything flows through Unity Catalog using the Neo4j UC connector path.
 
 == Example: Fleet Activity and Engine Health
 

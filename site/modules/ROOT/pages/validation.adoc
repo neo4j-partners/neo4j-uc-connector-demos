@@ -62,7 +62,7 @@ uv run python validate.py extras
 |Script |Purpose
 
 |`run_extra_connection_smoke.py`
-|Runs broader connection checks across the Python driver, Spark Connector, direct JDBC, UC JDBC, and `remote_query()`
+|Runs broader setup checks across the Python driver, direct JDBC, UC JDBC, and `remote_query()`
 
 |`run_extra_federated_regression.py`
 |Runs federated query regression checks beyond the getting-started notebook coverage

@@ -76,9 +76,9 @@ For cluster configuration, setup steps, and notebook details, see [getting-start
 
 ## Going Further
 
-**Advanced Patterns.** The `advanced-patterns/` directory builds on the getting-started notebooks with metadata sync via the UC External Metadata API, additional federated query patterns combining `remote_query()` with Spark Connector reads and Delta joins, and performance diagnostics. See [advanced-patterns/README.md](./advanced-patterns/README.md).
+**Advanced Patterns.** The `advanced-patterns/` directory builds on the getting-started notebooks with metadata sync via the UC External Metadata API, additional `remote_query()` federation patterns, Delta joins, and performance diagnostics. See [advanced-patterns/README.md](./advanced-patterns/README.md).
 
-**Validation.** The `validation/` directory contains Python scripts that run on Databricks as multi-task jobs defined in a Databricks Asset Bundle (`databricks.yml` plus `resources/*.yml`). They cover data load, connection validation, federated queries, metadata sync, and advanced Spark patterns, providing automated end-to-end smoke testing without manual notebook execution. See [validation/README.md](./validation/README.md).
+**Validation.** The `validation/` directory contains Python scripts that run on Databricks as multi-task jobs defined in a Databricks Asset Bundle (`databricks.yml` plus `resources/*.yml`). They cover data load, connection validation, federated queries, metadata sync, and advanced `remote_query()` patterns, providing automated end-to-end smoke testing without manual notebook execution. See [validation/README.md](./validation/README.md).
 
 **Reference Docs.** The `docs/` directory contains detailed technical documentation:
 - [neo4j_uc_jdbc_guide.md](./docs/neo4j_uc_jdbc_guide.md): JDBC setup reference, query patterns, type mappings, and troubleshooting
@@ -179,4 +179,3 @@ For the full capability breakdown and trade-offs, see [docs/neo4j-offiicial-data
 - [Neo4j SQL2Cypher Translation](https://neo4j.com/docs/jdbc-manual/current/sql2cypher/)
 - [Databricks Unity Catalog JDBC](https://docs.databricks.com/aws/en/connect/jdbc-connection)
 - [Databricks Lakehouse Federation](https://docs.databricks.com/aws/en/query-federation/)
-- [Neo4j Spark Connector](https://neo4j.com/docs/spark/current/)

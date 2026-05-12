@@ -310,13 +310,13 @@ Both federation methods have a place. The right choice depends on the query patt
 |Neo4j Federated JDBC UC Connection via `remote_query()` or DataFrame API
 
 |Complex Cypher (variable-length paths, graph algorithms)
-|Neo4j Spark Connector
+|Outside this UC JDBC SQL demo
 
 |Relationship property aggregation
-|Neo4j Spark Connector
+|Outside this UC JDBC SQL demo
 
 |Ad-hoc graph exploration
-|Neo4j Python Driver
+|Neo4j Federated JDBC UC Connection via `remote_query()`
 |===
 
 The federated queries in this guide use Neo4j Federated JDBC UC Connection through `remote_query()` for graph traversal, row-level graph reads, aggregate counts, GROUP BY, HAVING, and ORDER BY. Query 5 (Fleet Health Dashboard) demonstrates this remote-query-first approach with Delta joins.

@@ -103,13 +103,13 @@ The `java_dependencies` option in `CREATE CONNECTION TYPE JDBC` only accepts UC 
 
 #### 4. Cluster Libraries
 
-Install on your Databricks cluster:
+For UC JDBC connections, the `java_dependencies` option in `CREATE CONNECTION` references the connector JAR in a UC Volume. Cluster-installed JAR libraries are not used by the UC connection.
+
+Notebook `00-load-graph.ipynb` uses the Neo4j Python driver only to seed the sample graph before the UC connector demos begin:
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| neo4j (Python) | 6.0+ | Neo4j Python Driver, required for notebook 00 |
-
-For UC JDBC connections, the `java_dependencies` option in `CREATE CONNECTION` references the JAR in a UC Volume. The Python driver is only needed for notebook 00, which loads the graph.
+| neo4j (Python) | 6.0+ | Initial sample graph load in notebook 00 |
 
 ### Required Spark Configuration
 

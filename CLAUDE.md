@@ -34,7 +34,7 @@ Databricks runs custom JDBC drivers in an isolated JVM sandbox. The connector re
 
 - `getting-started/`: Tutorial: 4 ordered Databricks notebooks (load graph → connect → federate → materialize)
 - `advanced-patterns/`: In-depth notebooks: metadata sync (Delta + External API), advanced federated queries, performance diagnostics
-- `validation/`: Programmatic Python scripts run as Databricks jobs (data load, connection validation, federated queries, metadata sync, advanced Spark patterns)
+- `validation/`: Programmatic Python scripts run as Databricks jobs (data load, connection validation, federated queries, metadata sync, advanced remote_query patterns)
 - `driver-tests/`: Local Java/Maven tests for Neo4j JDBC SQL-to-Cypher translation (no Databricks required)
 - `docs/`: Markdown reference documentation
 - `site/`: Antora documentation site (AsciiDoc, published to GitHub Pages)
@@ -65,6 +65,6 @@ git push origin connector-1.0.0
 
 Supported: `SELECT COUNT(*)`, aggregates with `WHERE`, `COUNT DISTINCT`, `NATURAL JOIN` (graph traversals), `GROUP BY` (implicit and explicit WITH-clause generation), `HAVING` (simple, compound, mixed aggregates, without GROUP BY), `ORDER BY` (including on aggregate aliases and after WITH clauses), `DISTINCT` with GROUP BY/HAVING, `LIMIT`/`OFFSET` with WITH clauses, `WHERE` + `GROUP BY` combinations, `JOIN` + `GROUP BY`, `COUNT(DISTINCT)` in HAVING, additional aggregate functions (`stDev`, `stDevP`), full clause combinations.
 
-Not supported (use Spark Connector instead): relationship property aggregation, user-authored derived-table subqueries (`SELECT * FROM (...) alias`).
+Not supported through the UC JDBC SQL surface: relationship property aggregation, user-authored derived-table subqueries (`SELECT * FROM (...) alias`).
 
 Note: Spark's `SPARK_GEN_SUBQ_N` probe wrappers are stripped automatically by the spark cleaner JAR before translation. This is internal plumbing; it is not the same as support for user-authored subqueries.

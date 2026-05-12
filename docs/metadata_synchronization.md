@@ -386,7 +386,7 @@ df.write.format("delta").mode("overwrite").saveAsTable("neo4j_catalog.nodes.airc
 - Data is queryable via standard SQL (`SELECT * FROM neo4j_catalog.nodes.aircraft`)
 - Delta features (time travel, ACID transactions, optimization) apply
 - No custom sync code for metadata; schema is inferred from the DataFrame
-- Uses the same UC JDBC connection as federation, so no Spark Connector or single-user cluster is required
+- Uses the same UC JDBC connection as federation, so the metadata sync follows the same connector path as the query notebooks
 
 **Cons:**
 - Copies data; not a live view of Neo4j
@@ -441,7 +441,7 @@ A hybrid approach combining metadata registration with query routing:
 
 ### Sync Pipeline Steps
 
-1. **Introspect Neo4j schema**: Call `apoc.meta.schema()` + `SHOW CONSTRAINTS` via the Neo4j Python driver or JDBC
+1. **Introspect Neo4j schema**: Call `db.schema.nodeTypeProperties()` and `db.schema.relTypeProperties()` through the Neo4j UC connector/JDBC path
 2. **Map to UC model**: Convert labels → tables, properties → columns, Neo4j types → UC types
 3. **Register metadata in UC**: Use Tables REST API or External Metadata API
 4. **Optionally materialize data**: Write high-value labels as Delta tables for SQL querying
@@ -450,24 +450,38 @@ A hybrid approach combining metadata registration with query routing:
 ### Sync Pipeline Implementation Sketch
 
 ```python
-from neo4j import GraphDatabase
 import requests
 import json
 
-# --- Step 1: Introspect Neo4j ---
+# --- Step 1: Introspect Neo4j through UC JDBC ---
 
-def get_neo4j_schema(driver):
-    """Extract full schema from Neo4j using APOC."""
-    with driver.session() as session:
-        result = session.run("CALL apoc.meta.schema({sample: -1})")
-        record = result.single()
-        return record["value"]
+def run_remote_query(spark, connection_name, query):
+    """Run a Neo4j-side metadata query through Databricks remote_query()."""
+    escaped = query.replace("'", "''")
+    return spark.sql(f"""
+        SELECT * FROM remote_query('{connection_name}',
+            query => '{escaped}')
+    """)
 
-def get_neo4j_constraints(driver):
-    """Get constraints for precise type and uniqueness info."""
-    with driver.session() as session:
-        result = session.run("SHOW CONSTRAINTS YIELD *")
-        return [dict(record) for record in result]
+def get_neo4j_schema(spark, connection_name):
+    """Extract label and relationship property metadata through UC JDBC."""
+    node_props = run_remote_query(
+        spark,
+        connection_name,
+        """/*+ NEO4J FORCE_CYPHER */
+        CALL db.schema.nodeTypeProperties()
+        YIELD nodeLabels, propertyName, propertyTypes, mandatory
+        RETURN nodeLabels, propertyName, propertyTypes, mandatory"""
+    ).collect()
+    rel_props = run_remote_query(
+        spark,
+        connection_name,
+        """/*+ NEO4J FORCE_CYPHER */
+        CALL db.schema.relTypeProperties()
+        YIELD relType, propertyName, propertyTypes, mandatory
+        RETURN relType, propertyName, propertyTypes, mandatory"""
+    ).collect()
+    return {"nodes": node_props, "relationships": rel_props}
 
 # --- Step 2: Map to UC model ---
 
@@ -586,7 +600,7 @@ Two notebooks in `advanced-patterns/` implement the approaches described above:
 
 | Notebook | Implements | What It Does |
 |----------|-----------|--------------|
-| [`getting-started/03-materialized-tables.ipynb`](../getting-started/03-materialized-tables.ipynb) | Approach 3 (Materialized Delta Tables) | Reads each Neo4j node label through the UC JDBC connection and writes it as a managed Delta table, then queries `INFORMATION_SCHEMA` to confirm UC has registered the schema automatically. Uses the same JDBC path as federation, so no Spark Connector or single-user cluster is required. |
+| [`getting-started/03-materialized-tables.ipynb`](../getting-started/03-materialized-tables.ipynb) | Approach 3 (Materialized Delta Tables) | Reads each Neo4j node label through the UC JDBC connection and writes it as a managed Delta table, then queries `INFORMATION_SCHEMA` to confirm UC has registered the schema automatically. Uses the same JDBC path as federation. |
 | [`05_metadata_sync_external_api.ipynb`](../advanced-patterns/05_metadata_sync_external_api.ipynb) | Approach 2 (External Metadata API) | Discovers the Neo4j schema, then registers each node label and relationship type via the [External Metadata REST API](https://docs.databricks.com/api/workspace/externalmetadata). No data is copied; this is metadata-only registration for discoverability and lineage. Encodes Neo4j property types in the metadata properties map. Includes optional cleanup to delete registered objects. |
 
 ---
@@ -600,5 +614,4 @@ Two notebooks in `advanced-patterns/` implement the approaches described above:
 - [Unity Catalog REST API: External Lineage](https://docs.databricks.com/api/workspace/externallineage)
 - [Unity Catalog INFORMATION_SCHEMA](https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-information-schema.html)
 - [Neo4j APOC meta.schema()](https://neo4j.com/docs/apoc/current/overview/apoc.meta/apoc.meta.schema/)
-- [Neo4j Spark Connector: Databricks](https://neo4j.com/docs/spark/current/databricks/)
 - [Neo4j JDBC Driver](https://neo4j.com/docs/jdbc-manual/current/)

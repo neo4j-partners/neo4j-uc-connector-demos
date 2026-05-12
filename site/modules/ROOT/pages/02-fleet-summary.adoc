@@ -1,7 +1,7 @@
 = Query 2: Fleet Summary
 :description: Fleet-wide overview combining Neo4j graph metrics with Delta sensor analytics via remote_query()
 
-Fleet-wide overview combining Neo4j graph metrics with Delta sensor analytics in a single SQL statement. No Spark Connector needed, using pure SQL federation via Neo4j Federated JDBC UC Connection.
+Fleet-wide overview combining Neo4j graph metrics with Delta sensor analytics in a single SQL statement using pure SQL federation via Neo4j Federated JDBC UC Connection.
 
 **Federation Method:** `remote_query()` (Neo4j Federated JDBC UC Connection) with CROSS JOINs
 

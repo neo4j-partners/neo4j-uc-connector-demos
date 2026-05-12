@@ -10,7 +10,7 @@ assume that baseline is already in place.
 | Notebook | Topic |
 |----------|-------|
 | `05_metadata_sync_external_api.ipynb` | Register the Neo4j schema through the UC External Metadata API (no data copy) |
-| `06_new_federated_queries.ipynb` | Federated query patterns combining `remote_query()`, Spark Connector reads, and Delta joins |
+| `06_new_federated_queries.ipynb` | Advanced `remote_query()` patterns combining Neo4j graph aggregates and Delta joins |
 | `07_performance_diagnostics.ipynb` | Probe latency and throughput characteristics of the federation paths |
 
 For the materialization pattern (reading Neo4j via UC JDBC and writing managed Delta tables), see [`../getting-started/03-materialized-tables.ipynb`](../getting-started/03-materialized-tables.ipynb), which also shows how Unity Catalog tracks the materialized schema automatically.
@@ -55,14 +55,9 @@ catalog configuration from that scope.
 | Requirement | Metadata Sync (External API) | Federated Queries | Performance Diagnostics |
 |-------------|------------------------------|-------------------|------------------------|
 | Access mode | Any | **Single user** | **Single user** |
-| Neo4j Spark Connector | Not needed | **Required** | **Required** |
-| Neo4j Python driver | **Required** | Not needed | Not needed |
+| Neo4j UC JDBC connector | Not needed | Required | Required |
+| Neo4j Python driver | Required | Not needed | Not needed |
 | SafeSpark metaspace tuning | Not needed | **Required** | **Required** |
-
-Install cluster libraries:
-
-- Neo4j Spark Connector via Maven: `org.neo4j:neo4j-connector-apache-spark_2.12:5.4.0_for_spark_3`
-- Neo4j Python driver via PyPI: `neo4j`
 
 SafeSpark metaspace setting:
 

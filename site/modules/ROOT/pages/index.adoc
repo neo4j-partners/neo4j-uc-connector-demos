@@ -135,4 +135,3 @@ See xref:08-official-federation-catalog-governance.adoc[Catalog & Governance] an
 * https://neo4j.com/docs/jdbc-manual/current/sql2cypher/[Neo4j SQL2Cypher Translation]
 * https://docs.databricks.com/aws/en/connect/jdbc-connection[Databricks Unity Catalog JDBC]
 * https://docs.databricks.com/aws/en/query-federation/[Databricks Lakehouse Federation]
-* https://neo4j.com/docs/spark/current/[Neo4j Spark Connector]

@@ -37,14 +37,6 @@ Example path: `/Volumes/catalog/schema/jars/`
 
 ### 3. Cluster Libraries
 
-For comprehensive testing, install these libraries on your cluster:
-
-| Library | Version | Purpose |
-|---------|---------|---------|
-| org.neo4j:neo4j-connector-apache-spark | 5.3.10 (Spark 3) | Neo4j Spark Connector |
-| neo4j (Python) | 6.0.2 | Neo4j Python Driver |
-| neo4j-jdbc-full-bundle | 6.10.5 | JDBC driver (cluster library for Direct JDBC) |
-
 For UC JDBC connections, cluster libraries are **not used**. The `java_dependencies` option only accepts UC Volume paths. Cluster-installed libraries (Maven coordinates or uploaded JARs) cannot be referenced in `CREATE CONNECTION`. The JDBC JARs must be stored in a UC Volume.
 
 ---
@@ -280,7 +272,7 @@ ORDER BY cnt DESC LIMIT 10 OFFSET 2
 --         RETURN DISTINCT department, cnt, max_age ORDER BY cnt DESC SKIP 2 LIMIT 10
 ```
 
-> **Not supported:** relationship property aggregation (aggregating over properties stored on Neo4j relationships). Use the Neo4j Spark Connector for this pattern.
+> **Not supported:** relationship property aggregation (aggregating over properties stored on Neo4j relationships). This is outside the UC JDBC SQL surface.
 
 ## Unsupported Query Patterns
 
@@ -292,7 +284,7 @@ These patterns **do not work** through UC JDBC:
 
 ### Workaround
 
-**For relationship property aggregation:** Use Cypher directly via the Neo4j Spark Connector. In the property graph model, relationships carry their own properties (e.g., `claimCount` on a `SHARES_CLAIMS_WITH` relationship), but SQL has no concept of a join edge carrying data.
+Model relationship metrics as node properties or materialized tables before querying through UC JDBC. In the property graph model, relationships carry their own properties (for example, `claimCount` on a relationship), but SQL has no concept of a join edge carrying data.
 
 ---
 
@@ -344,7 +336,7 @@ df = spark.read.format("jdbc") \
 
 ### 2. Use Aggregates and GROUP BY for UC JDBC
 
-UC JDBC works well for aggregate queries (analytics, counts, summaries) including GROUP BY, HAVING, ORDER BY, and LIMIT. For row-level data access, use the Neo4j Spark Connector.
+UC JDBC works well for row-level reads, aggregate queries, graph traversal counts, GROUP BY, HAVING, ORDER BY, and LIMIT through `remote_query()`.
 
 ### 3. Use NATURAL JOIN for Relationships
 
@@ -396,11 +388,10 @@ df = query_neo4j("SELECT COUNT(*) AS cnt FROM Flight")
 | Cross-source SQL joins with Delta (single statement) | UC JDBC via `remote_query()` | UC Volume (`java_dependencies`) |
 | Genie / AI/BI Dashboards | Materialized Delta tables (loaded via `remote_query()`) | UC Volume (`java_dependencies`) |
 | PySpark-driven transformations between read and join | UC JDBC via DataFrame API | UC Volume (`java_dependencies`) |
-| Row-level data access | Neo4j Spark Connector | Cluster library (Maven coordinate) |
-| Complex Cypher queries (variable-length paths, OPTIONAL MATCH) | Neo4j Spark Connector | Cluster library (Maven coordinate) |
-| Relationship property aggregation | Neo4j Spark Connector | Cluster library (Maven coordinate) |
-| Ad-hoc exploration | Neo4j Python Driver | pip package |
-| Loading data into Neo4j (ingest) | Neo4j Python Driver | pip package |
+| Row-level data access | UC JDBC via `remote_query()` | UC Volume (`java_dependencies`) |
+| Complex Cypher queries (variable-length paths, OPTIONAL MATCH) | Outside this UC JDBC SQL demo | N/A |
+| Relationship property aggregation | Outside this UC JDBC SQL demo | N/A |
+| Ad-hoc exploration | UC JDBC via `remote_query()` | UC Volume (`java_dependencies`) |
 
 ---
 
@@ -421,7 +412,7 @@ spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 
 **Cause:** Query pattern not supported through UC (relationship property aggregation).
 
-**Fix:** Use Neo4j Spark Connector for unsupported patterns.
+**Fix:** Rewrite the query into the supported UC JDBC SQL surface, or materialize the needed relationship metrics first.
 
 ### "No column has been read prior to this call" / NullType errors
 
@@ -436,7 +427,6 @@ spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 ### Documentation
 - [Neo4j JDBC Driver Documentation](https://neo4j.com/docs/jdbc-manual/current/)
 - [Neo4j SQL2Cypher Translation](https://neo4j.com/docs/jdbc-manual/current/sql2cypher/)
-- [Neo4j Spark Connector](https://neo4j.com/docs/spark/current/)
 - [Databricks Unity Catalog JDBC](https://docs.databricks.com/aws/en/connect/jdbc-connection)
 - [Spark JDBC Data Sources](https://spark.apache.org/docs/latest/sql-data-sources-jdbc.html)
 

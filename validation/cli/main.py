@@ -16,7 +16,7 @@ FORBIDDEN_PATTERNS: tuple[tuple[str, str], ...] = (
     ("DataFrame JDBC read", 'spark.read.format("jdbc"'),
     ("DataFrame JDBC read", "spark.read.format('jdbc'"),
     ("UC JDBC DataFrame option", "databricks.connection"),
-    ("Neo4j Spark Connector", "org.neo4j.spark.DataSource"),
+    ("removed graph DataSource", "org.neo4j.spark.DataSource"),
     ("removed JDBC helper", "read_neo4j_jdbc"),
     ("removed JDBC materializer", "materialize_neo4j_jdbc"),
 )

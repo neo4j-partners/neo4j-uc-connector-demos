@@ -32,10 +32,10 @@ For the materialization pattern, see xref:materialization.adoc[Delta Materializa
 |Single user
 |Single user
 
-|Neo4j Spark Connector
+|Neo4j UC JDBC connector
 |Not needed
-|Not needed
-|Only needed for Spark Connector diagnostic cells
+|Required
+|Required
 
 |Neo4j Python driver
 |Required
@@ -48,19 +48,7 @@ For the materialization pattern, see xref:materialization.adoc[Delta Materializa
 |Required
 |===
 
-The advanced federated query notebook uses `remote_query()` and does not require the Neo4j Spark Connector. Install the Neo4j Spark Connector only if you run the optional Spark Connector diagnostic cells in the performance notebook:
-
-[source,text]
-----
-org.neo4j:neo4j-connector-apache-spark_2.12:5.4.0_for_spark_3
-----
-
-Install the Neo4j Python driver for metadata sync:
-
-[source,bash]
-----
-pip install neo4j
-----
+The advanced federated query notebook uses `remote_query()` through the Neo4j UC JDBC connector.
 
 == Connector and Secrets
 

@@ -132,4 +132,4 @@ This query demonstrates the remote-query-first federation pattern:
 * **`remote_query()`** for fleet-wide graph traversal metrics and graph-side aggregate pushdown
 * **Delta tables** as the foundation for time-series sensor analytics
 
-The result is a single SQL statement governed by Unity Catalog, without a Neo4j Spark Connector dependency.
+The result is a single SQL statement governed by Unity Catalog through the Neo4j UC connector.

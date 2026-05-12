@@ -154,7 +154,7 @@ Both projected and non-projected group keys are supported.
 |`remote_query()` CTE with GROUP BY + HAVING, INNER JOINed to a Delta table
 |===
 
-NOTE: All aggregation support applies to node properties only. Aggregating over relationship properties requires Cypher directly via the Neo4j Spark Connector.
+NOTE: All aggregation support applies to node properties exposed through the JDBC SQL-to-Cypher translator. Relationship-property aggregation is not part of the supported SQL surface.
 
 == Qualified Column Name Aliasing
 
@@ -211,7 +211,7 @@ Pure `GROUP BY` without `HAVING` or `ORDER BY` intermittently returns 0 rows on 
 |Pattern |Workaround
 
 |Relationship property aggregation
-|Use Cypher directly via the Neo4j Spark Connector.
+|Not supported through the UC JDBC SQL surface.
 
 |`WHERE col LIKE 'pattern'` in `remote_query()`
 |Databricks strips quotes from LIKE string literals before the query reaches the JDBC driver. Use a `FORCE_CYPHER` hint with a Cypher `STARTS WITH` or `CONTAINS` clause instead.
