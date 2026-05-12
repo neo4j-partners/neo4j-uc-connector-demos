@@ -35,7 +35,9 @@ Copy the sample environment file and fill in your values:
 cp .env.sample .env
 ```
 
-Set `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `DATABRICKS_PROFILE`, and the Neo4j credentials.
+Set `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `JDBC_JAR_PATH`,
+`UC_CONNECTION_NAME`, `LAKEHOUSE_SCHEMA`, `DATABRICKS_PROFILE`, and the Neo4j
+credentials.
 
 ### Upload Data
 

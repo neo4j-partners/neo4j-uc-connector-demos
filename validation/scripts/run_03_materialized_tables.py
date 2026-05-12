@@ -18,7 +18,7 @@ from data_utils import (
     ValidationResults,
     get_config,
     inject_params,
-    read_neo4j_jdbc,
+    remote_query,
 )
 
 
@@ -60,9 +60,9 @@ def main() -> None:
         ("Delay", 514),
     ]:
         try:
-            cnt = read_neo4j_jdbc(
-                spark, cfg, "cnt LONG", f"SELECT COUNT(*) AS cnt FROM {label}"
-            ).collect()[0]["cnt"]
+            cnt = remote_query(spark, cfg, f"SELECT COUNT(*) AS cnt FROM {label}").collect()[0][
+                "cnt"
+            ]
             results.record(f"Neo4j {label}", cnt == expected, f"{cnt} nodes")
         except RUNTIME_ERRORS as exc:
             results.record(f"Neo4j {label}", False, str(exc)[:160])
@@ -75,7 +75,6 @@ def main() -> None:
         fqn,
         "neo4j_aircraft",
         "SELECT aircraftId, tail_number, icao24, model, manufacturer, operator FROM Aircraft",
-        "aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, manufacturer STRING, operator STRING",
         20,
     )
     materialize(
@@ -85,7 +84,6 @@ def main() -> None:
         fqn,
         "neo4j_airports",
         "SELECT airportId, name, city, country, iata, icao FROM Airport",
-        "airportId STRING, name STRING, city STRING, country STRING, iata STRING, icao STRING",
         12,
     )
     materialize(
@@ -95,7 +93,6 @@ def main() -> None:
         fqn,
         "neo4j_systems",
         "SELECT systemId, aircraftId, type, name FROM System",
-        "systemId STRING, aircraftId STRING, type STRING, name STRING",
         80,
     )
     materialize(
@@ -105,7 +102,6 @@ def main() -> None:
         fqn,
         "neo4j_sensors",
         "SELECT sensorId, systemId, type, name, unit FROM Sensor",
-        "sensorId STRING, systemId STRING, type STRING, name STRING, unit STRING",
         160,
     )
     materialize(
@@ -115,7 +111,6 @@ def main() -> None:
         fqn,
         "neo4j_components",
         "SELECT componentId, systemId, type, name FROM Component",
-        "componentId STRING, systemId STRING, type STRING, name STRING",
         320,
     )
     materialize(
@@ -125,7 +120,6 @@ def main() -> None:
         fqn,
         "neo4j_maintenance_events",
         "SELECT eventId, componentId, systemId, aircraftId, fault, severity, reported_at, corrective_action FROM MaintenanceEvent",
-        "eventId STRING, componentId STRING, systemId STRING, aircraftId STRING, fault STRING, severity STRING, reported_at STRING, corrective_action STRING",
         300,
     )
     materialize(
@@ -135,7 +129,6 @@ def main() -> None:
         fqn,
         "neo4j_flights",
         "SELECT flightId, flight_number, aircraftId, operator, origin, destination, scheduled_departure, scheduled_arrival FROM Flight",
-        "flightId STRING, flight_number STRING, aircraftId STRING, operator STRING, origin STRING, destination STRING, scheduled_departure STRING, scheduled_arrival STRING",
         800,
     )
     materialize(
@@ -145,7 +138,6 @@ def main() -> None:
         fqn,
         "neo4j_delays",
         "SELECT delayId, flightId, cause, CAST(minutes AS STRING) AS minutes FROM Delay",
-        "delayId STRING, flightId STRING, cause STRING, minutes STRING",
         514,
     )
     materialize_aircraft_systems(spark, cfg, results, fqn)
@@ -330,12 +322,11 @@ def materialize(
     fqn: str,
     table_name: str,
     query: str,
-    custom_schema: str,
     expected: int,
 ) -> None:
-    """Read from Neo4j via UC JDBC and write as a managed Delta table."""
+    """Read from Neo4j via remote_query() and write as a managed Delta table."""
     try:
-        df = read_neo4j_jdbc(spark, cfg, custom_schema, query)
+        df = remote_query(spark, cfg, query)
         df = cast_all_to_string(df)
         start = time.time()
         df.write.format("delta").mode("overwrite").option(
@@ -359,15 +350,15 @@ def materialize_aircraft_systems(
 ) -> None:
     """Materialize the notebook's Aircraft -> HAS_SYSTEM -> System table."""
     try:
-        df = read_neo4j_jdbc(
+        df = remote_query(
             spark,
             cfg,
-            "aircraftId STRING, model STRING, systemId STRING, systemType STRING, systemName STRING, cnt LONG",
             """SELECT a.aircraftId AS aircraftId, a.model AS model,
                       s.systemId AS systemId, s.type AS systemType, s.name AS systemName,
                       COUNT(*) AS cnt
                FROM Aircraft a NATURAL JOIN HAS_SYSTEM rel NATURAL JOIN System s
-               GROUP BY a.aircraftId, a.model, s.systemId, s.type, s.name""",
+               GROUP BY a.aircraftId, a.model, s.systemId, s.type, s.name
+               HAVING COUNT(*) > 0""",
         ).select("aircraftId", "model", "systemId", "systemType", "systemName")
 
         df = cast_all_to_string(df)

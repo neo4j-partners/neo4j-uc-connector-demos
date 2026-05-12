@@ -70,6 +70,9 @@ cp .env.sample .env
 |`UC_CONNECTION_NAME`
 |Name for the JDBC UC connection (default: `sample_neo4j_jdbc_connection`)
 
+|`LAKEHOUSE_SCHEMA`
+|Schema name for advanced normalized Delta helper tables (default: `lakehouse`)
+
 |===
 
 === 2. Create the Databricks Secret Scope

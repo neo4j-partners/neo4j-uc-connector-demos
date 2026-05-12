@@ -1,7 +1,7 @@
 """Extra federated regression coverage: Neo4j + Databricks Delta lakehouse.
 
 Verifies Delta lakehouse tables and Neo4j counts, then runs federated queries
-combining both sources via remote_query() (UC JDBC) and Spark Connector.
+combining both sources via remote_query() and Delta SQL.
 
 Usage (via the DAB job):
     uv run python validate.py extras             # runs the full extras job
@@ -176,51 +176,12 @@ def main() -> None:
         vr.record("Federated: fleet summary", False, str(e)[:200])
 
     # ============================================================================
-    # Section 4: Load Neo4j data via Spark Connector
-    # ============================================================================
-    print("\n--- Load Neo4j via Spark Connector ---")
-
-    # 4a: Maintenance events
-    try:
-        t0 = time.time()
-        neo4j_maintenance = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg.neo4j_uri) \
-            .option("authentication.type", "basic") \
-            .option("authentication.basic.username", cfg.neo4j_username) \
-            .option("authentication.basic.password", cfg.neo4j_password) \
-            .option("labels", "MaintenanceEvent") \
-            .load()
-        neo4j_maintenance.createOrReplaceTempView("neo4j_maintenance")
-        cnt = neo4j_maintenance.count()
-        ms = (time.time() - t0) * 1000
-        vr.record("Spark Connector: MaintenanceEvent", cnt > 0, f"{cnt} events, {ms:.0f}ms")
-    except RUNTIME_ERRORS as e:
-        vr.record("Spark Connector: MaintenanceEvent", False, str(e)[:120])
-
-    # 4b: Flights
-    try:
-        t0 = time.time()
-        neo4j_flights = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg.neo4j_uri) \
-            .option("authentication.type", "basic") \
-            .option("authentication.basic.username", cfg.neo4j_username) \
-            .option("authentication.basic.password", cfg.neo4j_password) \
-            .option("labels", "Flight") \
-            .load()
-        neo4j_flights.createOrReplaceTempView("neo4j_flights")
-        cnt = neo4j_flights.count()
-        ms = (time.time() - t0) * 1000
-        vr.record("Spark Connector: Flight", cnt > 0, f"{cnt} flights, {ms:.0f}ms")
-    except RUNTIME_ERRORS as e:
-        vr.record("Spark Connector: Flight", False, str(e)[:120])
-
-    # ============================================================================
-    # Section 5: Federated, Sensor Health + Maintenance Correlation
+    # Section 4: Federated, Sensor Health + Maintenance Correlation
     # ============================================================================
     print("\n--- Federated: Sensor Health + Maintenance ---")
     try:
         t0 = time.time()
-        result = spark.sql("""
+        result = spark.sql(f"""
             WITH aircraft_ref AS (
                 SELECT aircraftId, tail_number, model, manufacturer, operator
                 FROM aircraft
@@ -240,11 +201,15 @@ def main() -> None:
             maintenance_summary AS (
                 SELECT
                     aircraftId,
-                    COUNT(*) AS total_events,
-                    SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical,
-                    SUM(CASE WHEN severity = 'MAJOR' THEN 1 ELSE 0 END) AS major,
-                    SUM(CASE WHEN severity = 'MINOR' THEN 1 ELSE 0 END) AS minor
-                FROM neo4j_maintenance
+                    SUM(cnt) AS total_events,
+                    SUM(CASE WHEN severity = 'CRITICAL' THEN cnt ELSE 0 END) AS critical,
+                    SUM(CASE WHEN severity = 'MAJOR' THEN cnt ELSE 0 END) AS major,
+                    SUM(CASE WHEN severity = 'MINOR' THEN cnt ELSE 0 END) AS minor
+                FROM remote_query('{cfg.uc_connection_name}',
+                    query => 'SELECT aircraftId, severity, COUNT(*) AS cnt
+                              FROM MaintenanceEvent
+                              GROUP BY aircraftId, severity
+                              HAVING COUNT(*) > 0')
                 GROUP BY aircraftId
             )
             SELECT
@@ -268,12 +233,12 @@ def main() -> None:
         vr.record("Federated: sensor+maintenance", False, str(e)[:200])
 
     # ============================================================================
-    # Section 6: Federated, Flight Operations + Engine Performance
+    # Section 5: Federated, Flight Operations + Engine Performance
     # ============================================================================
     print("\n--- Federated: Flight Ops + Engine Health ---")
     try:
         t0 = time.time()
-        result = spark.sql("""
+        result = spark.sql(f"""
             WITH aircraft_ref AS (
                 SELECT aircraftId, tail_number, model, operator
                 FROM aircraft
@@ -284,7 +249,8 @@ def main() -> None:
                     COUNT(*) AS total_flights,
                     COUNT(DISTINCT origin) AS unique_origins,
                     COUNT(DISTINCT destination) AS unique_destinations
-                FROM neo4j_flights
+                FROM remote_query('{cfg.uc_connection_name}',
+                    query => 'SELECT aircraftId, origin, destination FROM Flight')
                 GROUP BY aircraftId
             ),
             engine_health AS (
@@ -316,7 +282,7 @@ def main() -> None:
         vr.record("Federated: flights+engine", False, str(e)[:200])
 
     # ============================================================================
-    # Section 7: Federated, Fleet Health Dashboard (both methods)
+    # Section 6: Federated, Fleet Health Dashboard
     # ============================================================================
     print("\n--- Federated: Fleet Health Dashboard ---")
     try:
@@ -327,7 +293,7 @@ def main() -> None:
         print(f"  Graph traversal Flight→Airport: {departure_count:,} connections")
 
         t0 = time.time()
-        result = spark.sql("""
+        result = spark.sql(f"""
             WITH aircraft_ref AS (
                 SELECT aircraftId, tail_number, model, manufacturer, operator
                 FROM aircraft
@@ -345,14 +311,19 @@ def main() -> None:
                 GROUP BY sys.aircraftId
             ),
             maint AS (
-                SELECT aircraftId, COUNT(*) AS events,
-                       SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical
-                FROM neo4j_maintenance
+                SELECT aircraftId, SUM(cnt) AS events,
+                       SUM(CASE WHEN severity = 'CRITICAL' THEN cnt ELSE 0 END) AS critical
+                FROM remote_query('{cfg.uc_connection_name}',
+                    query => 'SELECT aircraftId, severity, COUNT(*) AS cnt
+                              FROM MaintenanceEvent
+                              GROUP BY aircraftId, severity
+                              HAVING COUNT(*) > 0')
                 GROUP BY aircraftId
             ),
             flights AS (
                 SELECT aircraftId, COUNT(*) AS flight_count
-                FROM neo4j_flights
+                FROM remote_query('{cfg.uc_connection_name}',
+                    query => 'SELECT aircraftId FROM Flight')
                 GROUP BY aircraftId
             )
             SELECT

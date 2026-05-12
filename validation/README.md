@@ -27,9 +27,9 @@ in `getting-started/` and `advanced-patterns/`.
 | Script | Purpose |
 |--------|---------|
 | `run_00_load_graph.py` | Matches `getting-started/00-load-graph.ipynb`: loads the aircraft graph into Neo4j from CSV in a UC Volume |
-| `run_01_connection_setup.py` | Matches `getting-started/01-neo4j-uc-connection-setup.ipynb`: creates `sensor_readings`, lakehouse helper tables, and the UC JDBC connection |
-| `run_02_federated_queries.py` | Matches `getting-started/02-federated-queries.ipynb`: runs the three live federated query sections |
-| `run_03_materialized_tables.py` | Matches `getting-started/03-materialized-tables.ipynb`: materializes `neo4j_*` Delta tables and validates SQL/federated queries |
+| `run_01_connection_setup.py` | Matches `getting-started/01-neo4j-uc-connection-setup.ipynb`: creates the UC JDBC connection and validates `remote_query()` |
+| `run_02_federated_queries.py` | Matches `getting-started/02-federated-queries.ipynb`: creates `sensor_readings` and runs the three live `remote_query()` federated sections |
+| `run_03_materialized_tables.py` | Matches `getting-started/03-materialized-tables.ipynb`: materializes `neo4j_*` Delta tables from `remote_query()` and validates SQL/federated queries |
 | `run_05_metadata_sync_external_api.py` | Matches `advanced-patterns/05_metadata_sync_external_api.ipynb`: registers Neo4j schema through the External Metadata API |
 | `run_06_new_federated_queries.py` | Matches `advanced-patterns/06_new_federated_queries.ipynb`: validates advanced `remote_query()` SQL and Delta joins |
 
@@ -46,7 +46,7 @@ uv run python validate.py extras
 
 | Script | Purpose |
 |--------|---------|
-| `run_extra_connection_smoke.py` | Broader connection checks across Python driver, Spark Connector, direct JDBC, UC JDBC, and `remote_query()` |
+| `run_extra_connection_smoke.py` | Broader connection checks across Python driver, UC connection creation, and `remote_query()` |
 | `run_extra_federated_regression.py` | Broader federated query regression checks beyond notebook 02 |
 | `run_extra_metadata_sync_tables.py` | Discovers and materializes all Neo4j labels and relationships as Delta tables |
 
@@ -212,7 +212,7 @@ between remote Neo4j results and Delta lakehouse tables.
 
 - `NEO4J_USERNAME` and `NEO4J_PASSWORD` are secret keys for validation, so they
   are not passed as plaintext bundle variables. `create_secrets.sh` also stores
-  the notebook UC and JDBC settings in the same scope.
+  the notebook UC, JDBC, and `LAKEHOUSE_SCHEMA` settings in the same scope.
 - Keep the repo-root `.env` local. Use `../.env.sample` for documented
   defaults.
 - `run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on

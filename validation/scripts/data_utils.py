@@ -10,7 +10,7 @@ Provides:
 - Config / get_config: frozen dataclass built from the resolved environment
 - csv_rows: Neo4j import CSV reader (used by run_00_load_graph)
 - Neo4j connection helpers
-- UC JDBC read helpers (DataFrame API and remote_query)
+- UC JDBC helpers
 - PASS/FAIL reporting and summary
 """
 
@@ -204,17 +204,6 @@ def get_neo4j_driver(cfg: Config):
 # ---------------------------------------------------------------------------
 # UC JDBC helpers
 # ---------------------------------------------------------------------------
-
-def read_neo4j_jdbc(spark, cfg: Config, custom_schema: str, query: str):
-    """Read from Neo4j through the UC JDBC connection."""
-    return (
-        spark.read.format("jdbc")
-        .option("databricks.connection", cfg.uc_connection_name)
-        .option("customSchema", custom_schema)
-        .option("query", query)
-        .load()
-    )
-
 
 def remote_query(spark, cfg: Config, query: str):
     """Execute a query via remote_query() SQL function."""

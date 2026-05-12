@@ -127,6 +127,7 @@ Without these settings, UC JDBC connections to Neo4j will fail with: `Connection
 
 Configuration for every script in this repo lives in a single `.env` file at the
 repo root. Copy the sample and fill in `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`,
+`JDBC_JAR_PATH`, `UC_CONNECTION_NAME`, `LAKEHOUSE_SCHEMA`,
 `DATABRICKS_PROFILE`, and the Neo4j credentials:
 
 ```bash
@@ -157,8 +158,9 @@ the secret scope from the root `.env`:
 
 This creates a secret scope named `neo4j-uc-demos` and stores `NEO4J_URI`,
 `NEO4J_USERNAME`, `NEO4J_PASSWORD`, `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`,
-`JDBC_JAR_PATH`, `UC_CONNECTION_NAME`, and `LAKEHOUSE_SCHEMA` as secrets. The
-scope name is configurable via `DATABRICKS_SECRET_SCOPE` in `.env`.
+`JDBC_JAR_PATH`, and `UC_CONNECTION_NAME` as secrets for the tutorial notebooks.
+It also stores `LAKEHOUSE_SCHEMA` for the advanced notebooks. The scope name is
+configurable via `DATABRICKS_SECRET_SCOPE` in `.env`.
 
 The notebooks retrieve configuration at runtime:
 

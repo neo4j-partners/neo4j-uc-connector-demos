@@ -1,8 +1,8 @@
-"""Notebook parity for getting-started/01-neo4j-uc-connection-setup.ipynb.
+"""Connection setup and validation for getting-started notebooks.
 
-Creates the tutorial Unity Catalog schema and volume, loads sensor_readings
-from the uploaded CSV, creates the UC JDBC connection, and validates the same
-basic Neo4j SQL reads as the notebook.
+Creates the UC JDBC connection and validates the same remote_query() reads as
+getting-started/01-neo4j-uc-connection-setup.ipynb. It also prepares the Delta
+tables needed by downstream validation tasks.
 
 Usage (via the DAB job):
     uv run python validate.py run                # runs the full notebook_parity job
@@ -18,7 +18,7 @@ from data_utils import (
     ValidationResults,
     get_config,
     inject_params,
-    read_neo4j_jdbc,
+    remote_query,
 )
 
 
@@ -43,7 +43,7 @@ def main() -> None:
     print(f"  UC Connection: {cfg.uc_connection_name}")
     print("")
 
-    print("--- Section 1: Load sensor_readings Delta Table ---")
+    print("--- Validation Setup: Load sensor_readings Delta Table ---")
     try:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {fqn}")
         spark.sql(f"CREATE VOLUME IF NOT EXISTS {fqn}.`{cfg.uc_volume}`")
@@ -119,21 +119,19 @@ def main() -> None:
 
     if connection_created:
         try:
-            df = read_neo4j_jdbc(spark, cfg, "test INT", "SELECT 1 AS test")
-            test_val = df.collect()[0]["test"]
-            results.record("Validate UC JDBC SELECT 1", test_val == 1, str(test_val))
+            test_val = remote_query(spark, cfg, "SELECT 1 AS test").collect()[0]["test"]
+            results.record("Validate remote_query SELECT 1", test_val == 1, str(test_val))
         except RUNTIME_ERRORS as exc:
             results.record(
-                "Validate UC JDBC SELECT 1",
+                "Validate remote_query SELECT 1",
                 False,
                 f"connection created but query failed: {str(exc)[:160]}",
             )
 
-    print("\n--- Section 3: Query via UC JDBC ---")
+    print("\n--- Section 3: Query via remote_query() ---")
     record_query(
         spark, cfg, results, connection_created,
         "Aircraft count",
-        "aircraft_count LONG",
         "SELECT COUNT(*) AS aircraft_count FROM Aircraft",
         lambda rows: rows[0]["aircraft_count"] == 20,
         lambda rows: str(rows[0]["aircraft_count"]),
@@ -141,18 +139,24 @@ def main() -> None:
     record_query(
         spark, cfg, results, connection_created,
         "Airport count",
-        "airport_count LONG",
         "SELECT COUNT(*) AS airport_count FROM Airport",
         lambda rows: rows[0]["airport_count"] == 12,
         lambda rows: str(rows[0]["airport_count"]),
     )
     try:
-        df = read_neo4j_jdbc(
-            spark,
-            cfg,
-            "operator STRING, flight_count LONG",
-            "SELECT operator, COUNT(*) AS flight_count FROM Flight GROUP BY operator ORDER BY flight_count DESC",
-        ) if connection_created else None
+        df = (
+            remote_query(
+                spark,
+                cfg,
+                """SELECT operator, COUNT(*) AS flight_count
+                   FROM Flight
+                   GROUP BY operator
+                   HAVING COUNT(*) > 0
+                   ORDER BY flight_count DESC""",
+            )
+            if connection_created
+            else None
+        )
         if df is None:
             results.record(
                 "Flights by operator",
@@ -180,7 +184,6 @@ def record_query(
     results: ValidationResults,
     connection_created: bool,
     name: str,
-    custom_schema: str,
     query: str,
     validator,
     detail,
@@ -190,7 +193,7 @@ def record_query(
         results.record(name, False, "skipped: connection not created")
         return
     try:
-        rows = read_neo4j_jdbc(spark, cfg, custom_schema, query).collect()
+        rows = remote_query(spark, cfg, query).collect()
         results.record(name, validator(rows), detail(rows))
     except RUNTIME_ERRORS as exc:
         results.record(

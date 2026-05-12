@@ -1,7 +1,7 @@
 """Extra metadata regression coverage: materialize Neo4j schema as Delta tables.
 
 Discovers all node labels and relationship types from Neo4j, then materializes
-each as a managed Delta table in a target catalog via the Spark Connector.
+each as a managed Delta table in a target catalog via the UC JDBC connection.
 
 Node labels → {catalog}.nodes.{label}
 Relationship types → {catalog}.relationships.{rel_type}
@@ -16,7 +16,6 @@ import re
 import sys
 import time
 from collections import defaultdict
-from functools import reduce
 
 from data_utils import (
     RUNTIME_ERRORS,
@@ -25,7 +24,7 @@ from data_utils import (
     get_config,
     get_neo4j_driver,
     inject_params,
-    read_neo4j_jdbc,
+    remote_query,
 )
 
 GETTING_STARTED_SCHEMA = "getting_started"
@@ -39,7 +38,7 @@ def cast_all_to_string(df):
     return df
 
 
-def materialize_jdbc_table(
+def materialize_remote_query_table(
     spark,
     cfg: Config,
     vr: ValidationResults,
@@ -48,15 +47,14 @@ def materialize_jdbc_table(
     results_log: list,
     table_name: str,
     query: str,
-    custom_schema: str,
     expected_rows: int,
     select_columns: list | None = None,
 ) -> None:
-    """Read from Neo4j via UC JDBC and write as a managed Delta table."""
+    """Read from Neo4j via remote_query() and write as a managed Delta table."""
     full_tbl = f"`{target_catalog}`.`{schema}`.`{table_name}`"
     t0 = time.time()
     try:
-        df = read_neo4j_jdbc(spark, cfg, custom_schema, query)
+        df = remote_query(spark, cfg, query)
         if select_columns:
             df = df.select(*select_columns)
         df = cast_all_to_string(df)
@@ -75,6 +73,21 @@ def materialize_jdbc_table(
         vr.record(f"Getting Started materialized: {table_name}", False, str(e)[:160])
 
 
+def id_property_for_label(label: str, discovered_labels) -> str | None:
+    """Best-effort identifier property for relationship table materialization."""
+    props = {prop["name"] for prop in discovered_labels.get(label, [])}
+    preferred = [
+        f"{label[:1].lower()}{label[1:]}Id",
+        "id",
+        "eventId",
+    ]
+    for name in preferred:
+        if name in props:
+            return name
+    id_like = sorted(name for name in props if name.lower().endswith("id"))
+    return id_like[0] if id_like else None
+
+
 def main() -> None:
     inject_params()
     cfg = get_config()
@@ -85,13 +98,6 @@ def main() -> None:
 
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
-
-    # Set Neo4j credentials at session level (avoids repeating per-query)
-    spark.conf.set("neo4j.url", cfg.neo4j_uri)
-    spark.conf.set("neo4j.authentication.type", "basic")
-    spark.conf.set("neo4j.authentication.basic.username", cfg.neo4j_username)
-    spark.conf.set("neo4j.authentication.basic.password", cfg.neo4j_password)
-    spark.conf.set("neo4j.database", cfg.neo4j_database)
 
     vr = ValidationResults()
 
@@ -218,64 +224,54 @@ def main() -> None:
     # ============================================================================
     # Section 4: Getting Started Materialized Tables Pattern
     # ============================================================================
-    print("\n--- Getting Started Pattern: UC JDBC Materialized Tables ---")
+    print("\n--- Getting Started Pattern: remote_query() Materialized Tables ---")
     getting_started_results = []
 
-    def materialize_getting_started(
-        table_name, query, custom_schema, expected_rows, select_columns=None
-    ):
-        materialize_jdbc_table(
+    def materialize_getting_started(table_name, query, expected_rows, select_columns=None):
+        materialize_remote_query_table(
             spark, cfg, vr, target_catalog, GETTING_STARTED_SCHEMA,
-            getting_started_results, table_name, query, custom_schema,
+            getting_started_results, table_name, query,
             expected_rows, select_columns=select_columns,
         )
 
     materialize_getting_started(
         "neo4j_aircraft",
         "SELECT aircraftId, tail_number, icao24, model, manufacturer, operator FROM Aircraft",
-        "aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, manufacturer STRING, operator STRING",
         20,
     )
     materialize_getting_started(
         "neo4j_airports",
         "SELECT airportId, name, city, country, iata, icao FROM Airport",
-        "airportId STRING, name STRING, city STRING, country STRING, iata STRING, icao STRING",
         12,
     )
     materialize_getting_started(
         "neo4j_systems",
         "SELECT systemId, aircraftId, type, name FROM System",
-        "systemId STRING, aircraftId STRING, type STRING, name STRING",
         80,
     )
     materialize_getting_started(
         "neo4j_sensors",
         "SELECT sensorId, systemId, type, name, unit FROM Sensor",
-        "sensorId STRING, systemId STRING, type STRING, name STRING, unit STRING",
         160,
     )
     materialize_getting_started(
         "neo4j_components",
         "SELECT componentId, systemId, type, name FROM Component",
-        "componentId STRING, systemId STRING, type STRING, name STRING",
         320,
     )
     materialize_getting_started(
         "neo4j_maintenance_events",
         "SELECT eventId, componentId, systemId, aircraftId, fault, severity, reported_at, corrective_action FROM MaintenanceEvent",
-        "eventId STRING, componentId STRING, systemId STRING, aircraftId STRING, fault STRING, severity STRING, reported_at STRING, corrective_action STRING",
         300,
     )
     materialize_getting_started(
         "neo4j_flights",
         "SELECT flightId, flight_number, aircraftId, operator, origin, destination, scheduled_departure, scheduled_arrival FROM Flight",
-        "flightId STRING, flight_number STRING, aircraftId STRING, operator STRING, origin STRING, destination STRING, scheduled_departure STRING, scheduled_arrival STRING",
         800,
     )
     materialize_getting_started(
         "neo4j_delays",
         "SELECT delayId, flightId, cause, CAST(minutes AS STRING) AS minutes FROM Delay",
-        "delayId STRING, flightId STRING, cause STRING, minutes STRING",
         514,
     )
     materialize_getting_started(
@@ -284,8 +280,8 @@ def main() -> None:
                   s.systemId AS systemId, s.type AS systemType, s.name AS systemName,
                   COUNT(*) AS cnt
            FROM Aircraft a NATURAL JOIN HAS_SYSTEM rel NATURAL JOIN System s
-           GROUP BY a.aircraftId, a.model, s.systemId, s.type, s.name""",
-        "aircraftId STRING, model STRING, systemId STRING, systemType STRING, systemName STRING, cnt LONG",
+           GROUP BY a.aircraftId, a.model, s.systemId, s.type, s.name
+           HAVING COUNT(*) > 0""",
         80,
         select_columns=["aircraftId", "model", "systemId", "systemType", "systemName"],
     )
@@ -299,14 +295,22 @@ def main() -> None:
     for label in sorted(discovered_labels.keys()):
         tbl_name = label.lower()
         full_tbl = f"`{target_catalog}`.`{nodes_schema}`.`{tbl_name}`"
-
+        props = sorted({prop["name"] for prop in discovered_labels[label]})
+        select_list = ", ".join(props)
         t0 = time.time()
         try:
-            df = spark.read.format("org.neo4j.spark.DataSource") \
-                .option("labels", f":{label}") \
-                .load()
+            if not props:
+                vr.record(f"Label: {label}", False, "no properties discovered")
+                continue
+
+            df = remote_query(
+                spark,
+                cfg,
+                f"SELECT {select_list} FROM {label}",
+            )
 
             col_count = len(df.columns)
+            df = cast_all_to_string(df)
             df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(full_tbl)
 
             row_count = spark.sql(f"SELECT COUNT(*) AS cnt FROM {full_tbl}").collect()[0]["cnt"]
@@ -341,20 +345,35 @@ def main() -> None:
         t0 = time.time()
         try:
             dfs = []
-            for pattern in patterns:
-                df = spark.read.format("org.neo4j.spark.DataSource") \
-                    .option("relationship", rel_type) \
-                    .option("relationship.source.labels", f":{pattern['source']}") \
-                    .option("relationship.target.labels", f":{pattern['target']}") \
-                    .load()
-                dfs.append(df)
+            for index, pattern in enumerate(patterns):
+                source_id = id_property_for_label(pattern["source"], discovered_labels)
+                target_id = id_property_for_label(pattern["target"], discovered_labels)
+                if not source_id or not target_id:
+                    raise ValueError(
+                        "missing id property for "
+                        f"{pattern['source']} -[:{rel_type}]-> {pattern['target']}"
+                    )
+                dfs.append(
+                    remote_query(
+                        spark,
+                        cfg,
+                        f"""SELECT s.{source_id} AS source_id,
+                                  t.{target_id} AS target_id,
+                                  '{pattern["source"]}' AS source_label,
+                                  '{pattern["target"]}' AS target_label,
+                                  '{index}' AS pattern_index
+                           FROM {pattern["source"]} s
+                           NATURAL JOIN {rel_type} r
+                           NATURAL JOIN {pattern["target"]} t""",
+                    )
+                )
 
-            df = reduce(
-                lambda left, right: left.unionByName(right, allowMissingColumns=True),
-                dfs,
-            )
+            df = dfs[0]
+            for extra_df in dfs[1:]:
+                df = df.unionByName(extra_df)
 
             col_count = len(df.columns)
+            df = cast_all_to_string(df)
             df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(full_tbl)
 
             row_count = spark.sql(f"SELECT COUNT(*) AS cnt FROM {full_tbl}").collect()[0]["cnt"]
