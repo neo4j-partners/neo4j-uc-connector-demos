@@ -23,7 +23,7 @@ Provision a Lakebase (managed PostgreSQL) instance through the Databricks worksp
 * `asset_manager_holdings`
 * `financial_metrics`
 
-Capture the connection host, username, and OAuth token (or password) — they are needed in the next step.
+Capture the connection host, username, and OAuth token or password. They are needed in the next step.
 
 ==== Step 2: Create the connection and foreign catalog in Catalog Explorer
 

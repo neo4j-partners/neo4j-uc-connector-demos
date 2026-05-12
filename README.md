@@ -47,13 +47,13 @@ CSV files for the aircraft digital twin dataset are in `getting-started/data/air
 
 ### Create Secrets
 
-Notebooks and scripts retrieve Neo4j credentials from Databricks secrets rather than hardcoded values. Provision the secret scope from the root `.env`:
+Notebooks retrieve Neo4j credentials, UC settings, the JDBC JAR path, and the connection name from Databricks secrets rather than hardcoded values. Provision the secret scope from the root `.env`:
 
 ```bash
 ./create_secrets.sh
 ```
 
-This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores `NEO4J_USERNAME` and `NEO4J_PASSWORD`.
+This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores the Neo4j credentials plus `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `JDBC_JAR_PATH`, and `UC_CONNECTION_NAME`.
 
 ---
 

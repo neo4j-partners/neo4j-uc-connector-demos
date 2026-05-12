@@ -45,7 +45,7 @@ cp .env.sample .env
 ./create_secrets.sh
 ----
 
-Set `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `DATABRICKS_PROFILE`, the Neo4j credentials, and the connector JAR path in `.env` before running the scripts. The upload script copies the aircraft digital twin CSV files into a UC Volume. The secrets script stores `NEO4J_USERNAME` and `NEO4J_PASSWORD` in the Databricks secret scope named by `DATABRICKS_SECRET_SCOPE`.
+Set `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `DATABRICKS_PROFILE`, the Neo4j credentials, and the connector JAR path in `.env` before running the scripts. The upload script copies the aircraft digital twin CSV files into a UC Volume. The secrets script stores the Neo4j credentials, UC settings, JDBC JAR path, and connection name in the Databricks secret scope named by `DATABRICKS_SECRET_SCOPE`.
 
 == Getting Started Notebooks
 

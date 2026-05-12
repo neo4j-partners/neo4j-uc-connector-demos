@@ -74,7 +74,7 @@ cp .env.sample .env
 ./create_secrets.sh
 ----
 
-`create_secrets.sh` stores `NEO4J_USERNAME` and `NEO4J_PASSWORD` in the secret scope named by `DATABRICKS_SECRET_SCOPE`.
+`create_secrets.sh` stores the Neo4j credentials plus shared UC and JDBC settings in the secret scope named by `DATABRICKS_SECRET_SCOPE`.
 
 == Programmatic Validation
 

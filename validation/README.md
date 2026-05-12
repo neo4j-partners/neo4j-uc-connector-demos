@@ -211,8 +211,9 @@ between remote Neo4j results and Delta lakehouse tables.
 
 ## Notes
 
-- `NEO4J_USERNAME` and `NEO4J_PASSWORD` are secret keys, so they are not passed
-  as plaintext bundle variables.
+- `NEO4J_USERNAME` and `NEO4J_PASSWORD` are secret keys for validation, so they
+  are not passed as plaintext bundle variables. `create_secrets.sh` also stores
+  the notebook UC and JDBC settings in the same scope.
 - Keep the repo-root `.env` local. Use `../.env.sample` for documented
   defaults.
 - `run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on

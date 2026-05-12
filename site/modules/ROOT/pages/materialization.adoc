@@ -1,7 +1,7 @@
 = Delta Materialization: Copying Neo4j Graph Data into Unity Catalog
 :description: Pattern for materializing Neo4j node types as Delta tables, enabling Genie, AI/BI dashboards, and SQL analytics without per-query JDBC overhead
 
-The JDBC federation approach works well for aggregate queries that run on demand. But some tools — Genie Spaces, AI/BI dashboards, and general-purpose SQL notebooks — expect Delta tables, not JDBC connections. Materialization solves this by reading all Neo4j node types once through the UC JDBC connection and writing them as Delta tables in the Unity Catalog schema. Once materialized, these tables join with the `sensor_readings` Delta table using standard Spark SQL, with no `customSchema` requirement and no JDBC round-trip per query.
+The JDBC federation approach works well for aggregate queries that run on demand. But some tools, such as Genie Spaces, AI/BI dashboards, and general-purpose SQL notebooks, expect Delta tables, not JDBC connections. Materialization solves this by reading all Neo4j node types once through the UC JDBC connection and writing them as Delta tables in the Unity Catalog schema. Once materialized, these tables join with the `sensor_readings` Delta table using standard Spark SQL, with no `customSchema` requirement and no JDBC round-trip per query.
 
 == When to Materialize
 

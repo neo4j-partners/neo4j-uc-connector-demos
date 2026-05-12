@@ -24,7 +24,7 @@ The connection will succeed on the next attempt. This is a one-time cluster conf
 
 *Error:* `No column has been read prior to this call`
 
-Before executing any query, Spark's JDBC reader sends a schema probe: the original query wrapped in `SELECT * FROM (...) SPARK_GEN_SUBQ_0 WHERE 1=0`. The Spark subquery cleaner in the connector strips this wrapper before it reaches the translator. The translator converts the query to Cypher and runs it — but with `WHERE 1=0`, Neo4j returns no rows and no type information. Spark receives a schema where every column is `NullType()`, which triggers this error before the actual query runs.
+Before executing any query, Spark's JDBC reader sends a schema probe: the original query wrapped in `SELECT * FROM (...) SPARK_GEN_SUBQ_0 WHERE 1=0`. The Spark subquery cleaner in the connector strips this wrapper before it reaches the translator. The translator converts the query to Cypher and runs it, but with `WHERE 1=0`, Neo4j returns no rows and no type information. Spark receives a schema where every column is `NullType()`, which triggers this error before the actual query runs.
 
 The fix is an explicit `customSchema` on every DataFrame API query. It bypasses inference entirely:
 
@@ -83,7 +83,7 @@ For the full materialization workflow including all node tables, see xref:materi
 
 *Pattern:* `WHERE col LIKE 'prefix%'` inside `remote_query()`
 
-Databricks strips quotes from LIKE string literals before the query reaches the JDBC driver. The query arrives at Neo4j as `WHERE col LIKE prefix%` — syntactically invalid in both SQL and Cypher.
+Databricks strips quotes from LIKE string literals before the query reaches the JDBC driver. The query arrives at Neo4j as `WHERE col LIKE prefix%`, which is syntactically invalid in both SQL and Cypher.
 
 Use a `FORCE_CYPHER` hint with `STARTS WITH`, `ENDS WITH`, or `CONTAINS` instead:
 
@@ -102,7 +102,7 @@ SELECT * FROM remote_query(
 )
 ----
 
-This limitation is in Databricks's `remote_query()` SQL parsing, not in the Neo4j JDBC driver. Queries sent through the PySpark DataFrame API (`.option("query", ...)`) are not affected — LIKE works there.
+This limitation is in Databricks's `remote_query()` SQL parsing, not in the Neo4j JDBC driver. Queries sent through the PySpark DataFrame API (`.option("query", ...)`) are not affected. LIKE works there.
 
 == GROUP BY Returns 0 Rows on Warm Clusters
 

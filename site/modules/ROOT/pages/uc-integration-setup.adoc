@@ -74,7 +74,7 @@ cp .env.sample .env
 
 === 2. Create the Databricks Secret Scope
 
-`create_secrets.sh` reads `NEO4J_USERNAME` and `NEO4J_PASSWORD` from `.env`, creates the secret scope if it doesn't exist, and stores the credentials:
+`create_secrets.sh` reads the Neo4j credentials, UC settings, JDBC JAR path, and connection name from `.env`, creates the secret scope if it doesn't exist, and stores them:
 
 [source,bash]
 ----
@@ -84,13 +84,14 @@ cp .env.sample .env
 The script uses `DATABRICKS_PROFILE` from `.env` when it is set. Leave
 `DATABRICKS_PROFILE` empty to use Databricks SDK unified auth.
 
-After running this, the Neo4j credentials are available in Databricks scripts via:
+After running this, the configuration is available in Databricks notebooks via:
 
 [source,python]
 ----
 from databricks.sdk import WorkspaceClient
 ws = WorkspaceClient()
 password = ws.dbutils.secrets.get(scope="neo4j-uc-demos", key="NEO4J_PASSWORD")
+catalog = ws.dbutils.secrets.get(scope="neo4j-uc-demos", key="UC_CATALOG")
 ----
 
 === 3. Upload CSV Data to the UC Volume
@@ -102,7 +103,7 @@ password = ws.dbutils.secrets.get(scope="neo4j-uc-demos", key="NEO4J_PASSWORD")
 ./getting-started/upload_data.sh
 ----
 
-This writes 17 CSV files to `/Volumes/<catalog>/<schema>/<volume>/`. The JDBC JAR must also be in a UC Volume before creating the connection — upload it manually to the path set in `JDBC_JAR_PATH`.
+This writes 17 CSV files to `/Volumes/<catalog>/<schema>/<volume>/`. The JDBC JAR must also be in a UC Volume before creating the connection. Upload it manually to the path set in `JDBC_JAR_PATH`.
 
 == Prerequisites
 
@@ -139,7 +140,7 @@ Download the latest release from https://github.com/neo4j-labs/neo4j-unity-catal
 
 === Credentials in Databricks Secrets
 
-Store Neo4j credentials in a Databricks secret scope rather than hardcoding them. `create_secrets.sh` provisions a scope from `.env` — by default the scope is named `neo4j-uc-demos` (configurable via `DATABRICKS_SECRET_SCOPE`) and holds `NEO4J_USERNAME` and `NEO4J_PASSWORD`:
+Store notebook configuration in a Databricks secret scope rather than hardcoding it. `create_secrets.sh` provisions a scope from `.env`. By default the scope is named `neo4j-uc-demos` and holds the Neo4j credentials plus `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `JDBC_JAR_PATH`, and `UC_CONNECTION_NAME`. The scope name is configurable via `DATABRICKS_SECRET_SCOPE`:
 
 [source,python]
 ----
@@ -147,6 +148,7 @@ SCOPE_NAME = "neo4j-uc-demos"
 
 NEO4J_USERNAME = dbutils.secrets.get(SCOPE_NAME, "NEO4J_USERNAME")
 NEO4J_PASSWORD = dbutils.secrets.get(SCOPE_NAME, "NEO4J_PASSWORD")
+UC_CATALOG = dbutils.secrets.get(SCOPE_NAME, "UC_CATALOG")
 ----
 
 `create_secrets.sh` reads `.env` and configures these secrets using the Databricks CLI.

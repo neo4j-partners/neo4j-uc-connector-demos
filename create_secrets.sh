@@ -23,8 +23,16 @@ env_val() {
 PROFILE="${1:-$(env_val DATABRICKS_PROFILE)}"
 SCOPE="$(env_val DATABRICKS_SECRET_SCOPE)"
 
-# Must match SECRET_KEYS in validation/validate.py.
-SECRET_KEYS=(NEO4J_URI NEO4J_USERNAME NEO4J_PASSWORD)
+SECRET_KEYS=(
+    NEO4J_URI
+    NEO4J_USERNAME
+    NEO4J_PASSWORD
+    UC_CATALOG
+    UC_SCHEMA
+    UC_VOLUME
+    JDBC_JAR_PATH
+    UC_CONNECTION_NAME
+)
 
 if [ -z "$SCOPE" ]; then
     echo "ERROR: DATABRICKS_SECRET_SCOPE not set in .env" >&2
