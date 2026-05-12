@@ -14,8 +14,8 @@ Sections:
   5. Verify node and relationship counts
 
 Usage (via runner):
-    uv run python -m cli upload run_00_load_graph.py
-    uv run python -m cli submit run_00_load_graph.py
+    uv run python validate.py upload run_00_load_graph.py
+    uv run python validate.py submit run_00_load_graph.py
 """
 
 import sys

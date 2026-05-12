@@ -2,17 +2,24 @@
 
 Batch validation scripts for Neo4j Unity Catalog federation on Databricks.
 
-The scripts use `databricks-job-runner==0.4.8` to upload local Python files to a
+Use `validate.py` as the only validation entry point:
+
+```bash
+cd validation
+uv run python validate.py --help
+```
+
+The script uses `databricks-job-runner==0.4.8` to upload local Python files to a
 Databricks workspace and submit them as one-time jobs. Runtime configuration is
 read from the repo-root `../.env` and passed to each job as task parameters.
-Neo4j credentials are stored in a Databricks secret scope, provisioned by the
-repo-root `../create_secrets.sh`.
+Neo4j credentials are stored in a Databricks secret scope by
+`uv run python validate.py secrets`.
 
 ## What Runs By Default
 
-`validate.sh` runs notebook-parity scripts in notebook order. These scripts are
-the non-notebook execution path for the code demonstrated in `getting-started/`
-and `advanced-patterns/`.
+`uv run python validate.py run` runs notebook-parity scripts in notebook order.
+These scripts are the non-notebook execution path for the code demonstrated in
+`getting-started/` and `advanced-patterns/`.
 
 | Script | Purpose |
 |--------|---------|
@@ -24,15 +31,22 @@ and `advanced-patterns/`.
 | `run_06_new_federated_queries.py` | Matches `advanced-patterns/06_new_federated_queries.ipynb`: validates advanced `remote_query()` SQL and Delta joins |
 
 `advanced-patterns/07_performance_diagnostics.ipynb` is optional and excluded
-from the default pass/fail suite. Run it with `./validate.sh --include-performance`.
+from the default pass/fail suite:
+
+```bash
+uv run python validate.py run --include-performance
+```
 
 See [`coverage_manifest.md`](coverage_manifest.md) for the notebook-to-script
 coverage map and intentional differences.
 
 ## Extra Regression Coverage
 
-The previous broader smoke checks are preserved, but they are not notebook
-parity. Run them with `./validate.sh --include-extras`.
+The broader smoke checks are preserved, but they are not notebook parity:
+
+```bash
+uv run python validate.py run --include-extras
+```
 
 | Script | Purpose |
 |--------|---------|
@@ -43,36 +57,35 @@ parity. Run them with `./validate.sh --include-extras`.
 ## Prerequisites
 
 - `uv`
-- Databricks CLI configured, or Databricks SDK environment auth
+- Databricks CLI profile or Databricks SDK environment auth
 - Access to a Databricks workspace with Unity Catalog enabled
 - A cluster ID for `cluster` mode, or access to Databricks serverless jobs
 - Neo4j Aura host, username, password, and database
 - Neo4j Unity Catalog connector JAR uploaded to a UC Volume
 - A UC Volume configured by `UC_CATALOG`, `UC_SCHEMA`, and `UC_VOLUME`
 
-The aligned validation path creates the Delta tables it needs. It no longer
-assumes `aircraft`, `systems`, `sensors`, or `sensor_readings` already exist in
+The aligned validation path creates the Delta tables it needs. It does not
+assume `aircraft`, `systems`, `sensors`, or `sensor_readings` already exist in
 the lakehouse schema.
 
 ## Data Setup
 
-`validate.sh` sets up data before submitting Databricks jobs. The dataset comes
-from:
+The default run sets up data before submitting Databricks jobs. The dataset
+comes from:
 
 ```text
 getting-started/data/aircraft_digital_twin_data/
 ```
 
-After configuring the repo-root `../.env` (see Quick Start below), the default
-validation flow runs these setup steps for you:
+`uv run python validate.py run` performs these setup steps:
 
 ```bash
-./getting-started/upload_data.sh
-./create_secrets.sh
+uv run python validate.py data
+uv run python validate.py secrets
 ```
 
-`getting-started/upload_data.sh` creates the configured UC schema and managed
-volume when needed, then copies the CSV files to
+`validate.py data` creates the configured UC schema and managed volume when
+needed, then copies the CSV files to
 `/Volumes/${UC_CATALOG}/${UC_SCHEMA}/${UC_VOLUME}/`. `run_00_load_graph.py`
 reads them on the cluster and writes the graph into Neo4j.
 `run_01_connection_setup.py` creates the tutorial `sensor_readings` table and
@@ -115,109 +128,50 @@ METADATA_GRANT_PRINCIPAL=
 `NEO4J_HOST` should be the host only. `NEO4J_URI=neo4j+s://...` is also
 supported.
 
-Create the Databricks secret scope and store the Neo4j credentials (from the
-repo root):
-
-```bash
-./create_secrets.sh
-```
-
-The rest of the commands below run from this `validation/` folder.
-
-Verify the local CLI resolves `databricks-job-runner`:
+Then run from `validation/`:
 
 ```bash
 uv sync --locked
-uv run python -m cli --help
-uv run python -c "from importlib.metadata import version; print(version('databricks-job-runner'))"
-```
-
-Expected version: `0.4.8`. In this repository, `pyproject.toml` resolves the
-runner from the local editable checkout at `../../databricks-job-runner`.
-
-Validate Neo4j credentials locally before submitting jobs:
-
-```bash
+uv run python validate.py check
+uv run python validate.py secrets
 uv run --with neo4j python tools/check_neo4j_auth.py
+uv run python validate.py upload test_hello.py
+uv run python validate.py submit test_hello.py
+uv run python validate.py run
 ```
-
-Upload and run the smoke test:
-
-```bash
-./upload.sh test_hello.py
-./submit.sh test_hello.py
-```
-
-Run the full validation suite:
-
-```bash
-./validate.sh
-```
-
-`validate.sh` first runs local checks:
-
-```bash
-uv sync --locked
-uv run python -c "from importlib.metadata import version; print(version('databricks-job-runner'))"
-uv run python -c "from databricks_job_runner import Runner; print(Runner)"
-uv run python -m cli --help
-uv run python -m compileall cli scripts tools
-```
-
-It also syntax-checks the shell wrappers, prints the coverage manifest, uploads
-sample data, creates or updates Databricks secrets, uploads all validation
-scripts, and submits the notebook-parity scripts listed above. The suite exits
-non-zero if any local check or remote job fails.
 
 For repeat runs where sample data, secrets, or uploaded scripts are already
 current:
 
 ```bash
-./validate.sh --skip-data --skip-secrets --skip-upload
-```
-
-To include the broader non-notebook regression scripts:
-
-```bash
-./validate.sh --include-extras
-```
-
-To include optional timing diagnostics:
-
-```bash
-./validate.sh --include-performance
+uv run python validate.py run --skip-data --skip-secrets --skip-upload
 ```
 
 To use serverless compute for a run:
 
 ```bash
-./submit.sh run_01_connection_setup.py --compute serverless
-./validate.sh --compute serverless
+uv run python validate.py submit run_01_connection_setup.py --compute serverless
+uv run python validate.py run --compute serverless
 ```
 
 ## Metadata
-
-### Overview
 
 The metadata validation has two paths:
 
 - `run_extra_metadata_sync_tables.py` materializes discovered Neo4j labels and
   relationship types as Delta tables in Unity Catalog.
-- `run_05_metadata_sync_external_api.py` registers the same discovered Neo4j schema as
-  Unity Catalog External Metadata entries through
+- `run_05_metadata_sync_external_api.py` registers the same discovered Neo4j
+  schema as Unity Catalog External Metadata entries through
   `/api/2.0/lineage-tracking/external-metadata`.
 
-`run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on the
-metastore. See [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata)
-for the grant setup, including why the grant must run as a cluster job and how
-`grant_external_metadata.sh` automates it.
-
-### Quick Start
+`run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on
+the metastore. `uv run python validate.py grant` automates the grant by
+uploading a one-shot PySpark task and submitting it to the configured cluster.
 
 Run the metadata suite end to end from `.env`:
 
 ```bash
-./validate_metadata.sh
+uv run python validate.py metadata
 ```
 
 By default this creates or updates the Databricks secret scope from `.env`,
@@ -226,40 +180,41 @@ grants `CREATE_EXTERNAL_METADATA`, uploads the validation scripts, and submits
 `run_05_metadata_sync_external_api.py`.
 
 To grant the privilege to a specific principal during the automated run, set
-`METADATA_GRANT_PRINCIPAL` in `.env`, or run the grant helper directly:
+`METADATA_GRANT_PRINCIPAL` in `.env`, or run the grant command directly:
 
 ```bash
-./grant_external_metadata.sh user@example.com
+uv run python validate.py grant user@example.com
 ```
 
 For repeat runs where secrets, grants, or uploads are already current:
 
 ```bash
-./validate_metadata.sh --skip-secrets --skip-grant --skip-upload
+uv run python validate.py metadata --skip-secrets --skip-grant --skip-upload
 ```
 
 To run the metadata jobs on serverless compute:
 
 ```bash
-./validate_metadata.sh --compute serverless
+uv run python validate.py metadata --compute serverless
 ```
 
-If the script reports `PERMISSION_DENIED`, confirm the grant job ran on a
-cluster where the submitting user is a metastore admin or otherwise allowed to
-grant metastore-level privileges.
+The grant step still requires `DATABRICKS_CLUSTER_ID` because the privilege is
+issued through a workspace cluster job.
 
 ## Common Commands
 
 ```bash
-uv run python -m cli upload --all
-uv run python -m cli upload run_01_connection_setup.py
-uv run python -m cli submit run_01_connection_setup.py
-uv run python -m cli submit run_06_new_federated_queries.py
-uv run python -m cli submit run_01_connection_setup.py --compute serverless
-./validate_metadata.sh
-uv run python -m cli validate run_01_connection_setup.py
-uv run python -m cli logs
-uv run python -m cli logs <run-id>
+uv run python validate.py list
+uv run python validate.py check
+uv run python validate.py data
+uv run python validate.py secrets
+uv run python validate.py upload --all
+uv run python validate.py upload run_01_connection_setup.py
+uv run python validate.py submit run_01_connection_setup.py
+uv run python validate.py submit run_06_new_federated_queries.py
+uv run python validate.py workspace run_01_connection_setup.py
+uv run python validate.py logs
+uv run python validate.py logs <run-id>
 ```
 
 ## Driver Tests Split
@@ -271,7 +226,11 @@ between remote Neo4j results and Delta lakehouse tables.
 
 ## Notes
 
-- `NEO4J_USERNAME` and `NEO4J_PASSWORD` are listed in `cli/__init__.py` as secret keys, so they are not passed as plaintext job parameters.
-- Keep the repo-root `.env` local. Use `../.env.sample` for documented defaults.
-- The wrapper scripts default `UV_CACHE_DIR` to `.uv-cache/` inside this folder. Override `UV_CACHE_DIR` if you want to use a shared cache.
-- `run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on the metastore. See [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata) and `grant_external_metadata.sh` for the grant workflow.
+- `NEO4J_USERNAME` and `NEO4J_PASSWORD` are secret keys, so they are not passed
+  as plaintext job parameters.
+- Keep the repo-root `.env` local. Use `../.env.sample` for documented
+  defaults.
+- `validate.py check` fails if shell scripts are reintroduced.
+- `run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on
+  the metastore. See
+  [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata).

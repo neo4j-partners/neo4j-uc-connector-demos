@@ -13,13 +13,13 @@ secrets.
 | `getting-started/03-materialized-tables.ipynb` | `scripts/run_03_materialized_tables.py` | Yes | Verifies sources, materializes all `neo4j_*` tables, checks `INFORMATION_SCHEMA`, runs SQL validation tests, and runs the four materialized-table federated queries. | Display-only cells are converted into assertions that fail the Databricks job on empty or mismatched results. |
 | `advanced-patterns/05_metadata_sync_external_api.ipynb` | `scripts/run_05_metadata_sync_external_api.py` | Yes | Discovers Neo4j schema, registers a test label, registers all labels and relationship types, lists registered metadata. | Adds idempotent handling for existing metadata, relationship pattern metadata for relationship types without properties, and best-effort cleanup for objects created during validation. |
 | `advanced-patterns/06_new_federated_queries.ipynb` | `scripts/run_06_new_federated_queries.py` | Yes | Runs the advanced `remote_query()` GROUP BY, HAVING, ORDER BY, DISTINCT, LIMIT, OFFSET, JOIN, and federated Delta join cells. | Adds assertions around each display query. |
-| `advanced-patterns/07_performance_diagnostics.ipynb` | `scripts/run_07_performance_diagnostics.py` | No | Optional timing diagnostics for direct Neo4j, `remote_query()`, Delta, Spark Connector, compound `remote_query()`, explain plans, and warm-up timing. | Runs only with `./validate.sh --include-performance`; timings are diagnostic and have no thresholds. |
+| `advanced-patterns/07_performance_diagnostics.ipynb` | `scripts/run_07_performance_diagnostics.py` | No | Optional timing diagnostics for direct Neo4j, `remote_query()`, Delta, Spark Connector, compound `remote_query()`, explain plans, and warm-up timing. | Runs only with `uv run python validate.py run --include-performance`; timings are diagnostic and have no thresholds. |
 
 ## Extra Regression Scripts
 
 These scripts are not notebook-parity checks. They preserve useful broader
 coverage from the previous validation suite and run only with
-`./validate.sh --include-extras`.
+`uv run python validate.py run --include-extras`.
 
 | Script | Purpose |
 |--------|---------|

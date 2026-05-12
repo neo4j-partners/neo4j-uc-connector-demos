@@ -170,7 +170,12 @@ def csv_rows(path: str) -> list:
 # ---------------------------------------------------------------------------
 
 def get_neo4j_driver(cfg: dict):
-    """Create and return a Neo4j driver from config dict."""
+    """Create and return a Neo4j driver from config dict.
+
+    Uses cfg["neo4j_bolt_uri"], which get_config() always builds as
+    neo4j+s://host:port (TLS). Non-TLS bolt is not supported by validation —
+    the project targets Neo4j Aura where TLS is mandatory.
+    """
     from neo4j import GraphDatabase
     return GraphDatabase.driver(cfg["neo4j_bolt_uri"], auth=(cfg["neo4j_username"], cfg["neo4j_password"]))
 

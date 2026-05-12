@@ -5,8 +5,8 @@ the notebook's timing probes without pass/fail thresholds, because the timings
 depend on workspace, compute mode, cluster size, and warm-up state.
 
 Usage:
-    ./validate.sh --include-performance
-    uv run python -m cli submit run_07_performance_diagnostics.py
+    uv run python validate.py run --include-performance
+    uv run python validate.py submit run_07_performance_diagnostics.py
 """
 
 import sys

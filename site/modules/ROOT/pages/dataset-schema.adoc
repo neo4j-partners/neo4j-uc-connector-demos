@@ -135,7 +135,7 @@ These indexes support the `MATCH` lookups in the relationship loading queries, w
 
 == CSV File Inventory
 
-The dataset ships as 17 CSV files uploaded to a UC Volume by `getting-started/upload_data.sh`. Node files follow Neo4j import format: the primary key column header is `:ID(Label)`, relationship source is `:START_ID(Label)`, and target is `:END_ID(Label)`. The `data_utils.csv_rows()` function normalizes these headers to `id`, `start_id`, and `end_id` before passing rows to Cypher.
+The dataset ships as 17 CSV files uploaded to a UC Volume by `validate.py data`. Node files follow Neo4j import format: the primary key column header is `:ID(Label)`, relationship source is `:START_ID(Label)`, and target is `:END_ID(Label)`. The `data_utils.csv_rows()` function normalizes these headers to `id`, `start_id`, and `end_id` before passing rows to Cypher.
 
 [cols="2,3"]
 |===

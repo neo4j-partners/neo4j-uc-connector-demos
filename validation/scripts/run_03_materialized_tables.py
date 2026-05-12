@@ -5,8 +5,8 @@ then runs the same INFORMATION_SCHEMA, SQL validation, and federated Delta
 queries from the notebook.
 
 Usage:
-    uv run python -m cli upload run_03_materialized_tables.py
-    uv run python -m cli submit run_03_materialized_tables.py
+    uv run python validate.py upload run_03_materialized_tables.py
+    uv run python validate.py submit run_03_materialized_tables.py
 """
 
 import sys
@@ -144,6 +144,17 @@ def main() -> None:
     materialize_aircraft_systems(spark, cfg, results, fqn)
 
     print("\n--- Section 3: Verify UC Schema Tracking ---")
+    expected_neo4j_tables = {
+        "neo4j_aircraft",
+        "neo4j_aircraft_systems",
+        "neo4j_airports",
+        "neo4j_components",
+        "neo4j_delays",
+        "neo4j_flights",
+        "neo4j_maintenance_events",
+        "neo4j_sensors",
+        "neo4j_systems",
+    }
     record_sql_result(
         spark,
         results,
@@ -155,7 +166,7 @@ def main() -> None:
           AND table_name LIKE 'neo4j_%'
         ORDER BY table_name
         """,
-        lambda rows: len(rows) >= 9,
+        lambda rows: expected_neo4j_tables.issubset({row["table_name"] for row in rows}),
     )
     record_sql_result(
         spark,

@@ -7,8 +7,9 @@ and `advanced-patterns/` still work without manually running the notebooks.
 
 The intended flow is:
 
-1. Upload sample data with `getting-started/upload_data.sh`.
-2. Create or update Databricks secrets with `create_secrets.sh`.
+1. Upload sample data with `cd validation && uv run python validate.py data`.
+2. Create or update Databricks secrets with
+   `cd validation && uv run python validate.py secrets`.
 3. Run validation jobs that execute the same setup, SQL, DataFrame, metadata,
    and materialization logic as the notebooks.
 4. Exclude performance diagnostics from the default run unless explicitly
@@ -64,11 +65,11 @@ Status: Complete
 Validation:
 
 - [x] `validation/README.md` lists notebook-parity scripts in notebook order.
-- [x] `validation/validate.sh` submits scripts in notebook order.
+- [x] `validation/validate.py run` submits scripts in notebook order.
 
 Notes:
 
-- Original `validate.sh` started at the old connection validation script;
+- Original validation started at the old connection validation script;
   aligned validation now includes graph loading after sample data upload.
 - Existing broader checks were preserved as `run_extra_connection_smoke.py`,
   `run_extra_federated_regression.py`, and
@@ -78,9 +79,9 @@ Notes:
 
 Status: Complete
 
-- [x] Update the default validation path to run
-      `getting-started/upload_data.sh` before submitting Databricks jobs.
-- [x] Update the default validation path to run `create_secrets.sh` before
+- [x] Update the default validation path to run `validate.py data` before
+      submitting Databricks jobs.
+- [x] Update the default validation path to run `validate.py secrets` before
       submitting Databricks jobs.
 - [x] Ensure `run_00_load_graph.py` is uploaded and submitted before all query,
       materialization, and metadata jobs.
@@ -158,7 +159,7 @@ Status: Complete
       connection smoke coverage or is split into notebook parity plus extras.
 - [x] Decide whether the current broader federated query checks remain as extras
       after exact notebook query validation exists.
-- [x] Update `validate.sh` so the default behavior is clear:
+- [x] Update `validate.py run` so the default behavior is clear:
       notebook-parity-only, notebook-parity-plus-extras, or configurable.
 - [x] Add a flag if needed, such as `--include-extras`.
 
@@ -172,7 +173,7 @@ Notes:
 
 - Do not delete useful checks just because they are not notebook parity. The goal
   is clarity and alignment, not reduced coverage.
-- Broader checks now run only with `./validate.sh --include-extras`.
+- Broader checks now run only with `uv run python validate.py run --include-extras`.
 
 ### Phase 5: Add A Coverage Manifest
 
@@ -198,7 +199,7 @@ Notes:
 - This can start as Markdown or YAML. The first version should optimize for
   reviewability over automation.
 - The manifest lives at `validation/coverage_manifest.md` and is printed by
-  `validation/validate.sh`.
+  `validation/validate.py run`.
 
 ### Phase 6: Keep Performance Optional
 
@@ -232,7 +233,9 @@ Notes:
 
 - [ ] A fresh configured workspace can run the aligned validation from sample
       data upload through graph load, connection setup, query validation,
-      materialization, metadata sync, and advanced SQL validation.
+      materialization, metadata sync, and advanced SQL validation. *(Requires
+      a live workspace run; verified by executing `uv run python validate.py run`
+      against a fresh-configured Databricks workspace.)*
 - [x] Every non-performance notebook has a direct validation script or a manifest
       entry explaining why it is intentionally excluded.
 - [x] Validation executes the same core SQL, DataFrame, JDBC, metadata API, and

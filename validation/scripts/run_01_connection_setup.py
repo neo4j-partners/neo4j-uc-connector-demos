@@ -5,8 +5,8 @@ from the uploaded CSV, creates the UC JDBC connection, and validates the same
 basic Neo4j SQL reads as the notebook.
 
 Usage:
-    uv run python -m cli upload run_01_connection_setup.py
-    uv run python -m cli submit run_01_connection_setup.py
+    uv run python validate.py upload run_01_connection_setup.py
+    uv run python validate.py submit run_01_connection_setup.py
 """
 
 import sys
@@ -187,6 +187,32 @@ def read_neo4j(spark, cfg: dict, custom_schema: str, query: str):
         .option("query", query)
         .load()
     )
+
+
+def record_query(
+    spark,
+    cfg: dict,
+    results: ValidationResults,
+    connection_created: bool,
+    name: str,
+    custom_schema: str,
+    query: str,
+    validator,
+    detail,
+) -> None:
+    """Run a notebook query and tag failures so connection-creation issues are distinguishable."""
+    if not connection_created:
+        results.record(name, False, "skipped: connection not created")
+        return
+    try:
+        rows = read_neo4j(spark, cfg, custom_schema, query).collect()
+        results.record(name, validator(rows), detail(rows))
+    except Exception as exc:
+        results.record(
+            name,
+            False,
+            f"connection created but query failed: {str(exc)[:140]}",
+        )
 
 
 def create_lakehouse_helper_tables(spark, cfg: dict, results: ValidationResults) -> None:

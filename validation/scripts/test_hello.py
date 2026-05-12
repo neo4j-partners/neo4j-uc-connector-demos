@@ -1,7 +1,7 @@
 """Minimal smoke test to verify remote execution on Databricks.
 
 Usage:
-    ./upload.sh test_hello.py && ./submit.sh test_hello.py
+    uv run python validate.py upload test_hello.py && uv run python validate.py submit test_hello.py
 """
 
 import os

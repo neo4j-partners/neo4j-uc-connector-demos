@@ -139,7 +139,8 @@ CSV files are in `getting-started/data/aircraft_digital_twin_data/`. Upload them
 to your UC Volume before running the notebooks:
 
 ```bash
-./getting-started/upload_data.sh
+cd validation
+uv run python validate.py data
 ```
 
 This creates the configured UC schema and managed volume when needed, then
@@ -151,7 +152,8 @@ Notebooks use Databricks secrets for Neo4j credentials rather than hardcoded
 values. Set up the secret scope from the root `.env`:
 
 ```bash
-./create_secrets.sh
+cd validation
+uv run python validate.py secrets
 ```
 
 This creates a secret scope named `neo4j-uc-demos` (configurable via
@@ -171,8 +173,8 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 ## Getting Started
 
 1. Copy and fill in the root config: `cp .env.sample .env`
-2. Upload CSV data: `./getting-started/upload_data.sh`
-3. Create secrets: `./create_secrets.sh`
+2. Upload CSV data: `cd validation && uv run python validate.py data`
+3. Create secrets: `cd validation && uv run python validate.py secrets`
 4. Open each notebook and edit its configuration cell — set `NEO4J_URI`, `UC_CATALOG`, and `JDBC_JAR_PATH` to match the values in your `.env`. The notebook config cells are independent of `.env`; Databricks notebooks don't read the local file.
 5. Run `00-load-graph.ipynb` to load the aircraft graph into Neo4j.
 6. Run `01-neo4j-uc-connection-setup.ipynb` to create the `sensor_readings` table and UC JDBC connection.

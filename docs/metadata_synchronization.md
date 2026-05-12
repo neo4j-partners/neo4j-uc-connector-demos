@@ -237,21 +237,22 @@ spark.sql("GRANT CREATE_EXTERNAL_METADATA ON METASTORE TO `user@example.com`")
 
 This works when the submitting user is a metastore admin or holds sufficient inherited privileges.
 
-### Using grant_external_metadata.sh
+### Using validate.py grant
 
-`validation/grant_external_metadata.sh` automates this. It discovers the current workspace user, uploads a one-shot PySpark task, and submits it to the configured cluster:
+`validation/validate.py grant` automates this. It discovers the current workspace user, uploads a one-shot PySpark task, and submits it to the configured cluster:
 
 ```bash
 # Grant to the current workspace user (reads DATABRICKS_CLUSTER_ID from .env)
-./grant_external_metadata.sh
+cd validation
+uv run python validate.py grant
 
 # Grant to a specific principal
-./grant_external_metadata.sh other.user@example.com
+uv run python validate.py grant other.user@example.com
 ```
 
 The script reads `DATABRICKS_PROFILE`, `DATABRICKS_CLUSTER_ID`, and `DATABRICKS_WORKSPACE_DIR` from the repo-root `.env`. `DATABRICKS_CLUSTER_ID` must point to an all-purpose cluster — serverless is not supported for the grant job.
 
-`validate_metadata.sh` calls the grant step automatically unless `--skip-grant` is passed.
+`uv run python validate.py metadata` calls the grant step automatically unless `--skip-grant` is passed.
 
 ---
 

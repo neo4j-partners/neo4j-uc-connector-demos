@@ -36,16 +36,17 @@ Upload to `/Volumes/main/jdbc_drivers/jars/neo4j-unity-catalog-connector-<versio
 ### 2. Databricks Secrets
 
 Configuration and secrets live in the repo-root `.env` and are provisioned by
-the repo-root `create_secrets.sh`:
+the validation CLI:
 
 ```bash
 # From the repo root:
 cp .env.sample .env
 # Edit .env with your Neo4j credentials
-./create_secrets.sh
+cd validation
+uv run python validate.py secrets
 ```
 
-`create_secrets.sh` stores `NEO4J_USERNAME` and `NEO4J_PASSWORD` in the scope
+`validate.py secrets` stores `NEO4J_USERNAME` and `NEO4J_PASSWORD` in the scope
 named by `DATABRICKS_SECRET_SCOPE` (default `neo4j-uc-demos`). Each notebook's
 configuration cell hardcodes non-secret values (host, connection name, lakehouse
 catalog/schema) — edit them for your environment.

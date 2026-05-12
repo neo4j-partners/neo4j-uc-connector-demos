@@ -5,8 +5,8 @@ the notebook itself. Display calls are kept for log readability, and assertions
 turn missing or mismatched results into job failures.
 
 Usage:
-    uv run python -m cli upload run_02_federated_queries.py
-    uv run python -m cli submit run_02_federated_queries.py
+    uv run python validate.py upload run_02_federated_queries.py
+    uv run python validate.py submit run_02_federated_queries.py
 """
 
 import sys
