@@ -11,8 +11,7 @@ The intended flow is:
 2. Create or update Databricks secrets with `./create_secrets.sh`.
 3. Run validation jobs that execute the same setup, SQL, DataFrame, metadata,
    and materialization logic as the notebooks.
-4. Exclude performance diagnostics from the default run unless explicitly
-   requested.
+4. Exclude performance diagnostics from the default run
 
 ## Assumptions
 
@@ -29,8 +28,6 @@ The intended flow is:
   code as notebooks change.
 - Some current checks are broader than notebook parity, so renaming or splitting
   them needs care to avoid losing useful regression coverage.
-- Databricks cluster and serverless behavior can differ, especially for
-  federation planning and performance timing.
 - The External Metadata API path requires metastore privileges; validation needs
   clear setup and skip/error behavior for that permission.
 
@@ -154,7 +151,7 @@ Status: Complete
       after exact notebook query validation exists.
 - [x] Update `validate.py run` so the default behavior is clear:
       notebook-parity-only, notebook-parity-plus-extras, or configurable.
-- [x] Add a flag if needed, such as `--include-extras`.
+- [x] Add a separate command if needed, such as `validate.py extras`.
 
 Validation:
 
@@ -166,7 +163,7 @@ Notes:
 
 - Do not delete useful checks just because they are not notebook parity. The goal
   is clarity and alignment, not reduced coverage.
-- Broader checks now run only with `uv run python validate.py run --include-extras`.
+- Broader checks now run only with `uv run python validate.py extras`.
 
 ## Completion Criteria
 

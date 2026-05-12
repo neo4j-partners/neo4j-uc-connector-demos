@@ -1,6 +1,6 @@
 # Getting Started: Neo4j + Databricks Unity Catalog Federation
 
-An aircraft operations graph stores which aircraft have which sensors, how systems are connected, and which flights experienced delays. A lakehouse stores the actual sensor telemetry — 172,800 hourly readings from 160 sensors over 45 days. An analyst needs both in the same query: traverse graph topology in Neo4j to find relevant sensors, then join against the time-series readings in Delta. Neither system can answer that question alone.
+An aircraft operations graph stores which aircraft have which sensors, how systems are connected, and which flights experienced delays. A lakehouse stores the actual sensor telemetry: 172,800 hourly readings from 160 sensors over 45 days. An analyst needs both in the same query: traverse graph topology in Neo4j to find relevant sensors, then join against the time-series readings in Delta. Neither system can answer that question alone.
 
 These four notebooks walk through the integration pattern that connects Neo4j to Databricks through Unity Catalog's JDBC support. The connector translates SQL to Cypher automatically, so Spark treats Neo4j labels like tables. The progression moves from loading the graph, to validating the connection, to running federated queries across both systems, to materializing graph data as Delta tables where standard SQL and Genie can reach it.
 

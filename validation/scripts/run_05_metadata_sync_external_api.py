@@ -4,9 +4,10 @@ Discovers all node labels and relationship types from Neo4j, then registers
 each as an external metadata entry in Unity Catalog via the External Metadata
 API. No Delta tables are created — this registers metadata only.
 
-Usage:
-    uv run python validate.py upload run_05_metadata_sync_external_api.py
-    uv run python validate.py submit run_05_metadata_sync_external_api.py
+Usage (via the DAB job):
+    uv run python validate.py run                # runs as part of the notebook_parity job
+    uv run python validate.py metadata           # runs as part of the metadata job
+    databricks bundle run notebook_parity        # equivalent, direct bundle call
 """
 
 import re

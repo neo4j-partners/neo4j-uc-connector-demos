@@ -4,9 +4,9 @@ Runs the same advanced remote_query SQL cells and federated Delta joins without
 running the notebook itself. Assertions are added around the notebook display
 operations.
 
-Usage:
-    uv run python validate.py upload run_06_new_federated_queries.py
-    uv run python validate.py submit run_06_new_federated_queries.py
+Usage (via the DAB job):
+    uv run python validate.py run                # runs the full notebook_parity job
+    databricks bundle run notebook_parity        # equivalent, direct bundle call
 """
 
 import sys

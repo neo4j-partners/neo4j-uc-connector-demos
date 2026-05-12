@@ -4,9 +4,9 @@ Creates the tutorial Unity Catalog schema and volume, loads sensor_readings
 from the uploaded CSV, creates the UC JDBC connection, and validates the same
 basic Neo4j SQL reads as the notebook.
 
-Usage:
-    uv run python validate.py upload run_01_connection_setup.py
-    uv run python validate.py submit run_01_connection_setup.py
+Usage (via the DAB job):
+    uv run python validate.py run                # runs the full notebook_parity job
+    databricks bundle run notebook_parity        # equivalent, direct bundle call
 """
 
 import sys

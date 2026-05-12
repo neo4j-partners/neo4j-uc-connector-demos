@@ -237,22 +237,28 @@ spark.sql("GRANT CREATE_EXTERNAL_METADATA ON METASTORE TO `user@example.com`")
 
 This works when the submitting user is a metastore admin or holds sufficient inherited privileges.
 
-### Using validate.py grant
+### Using the metadata DAB job
 
-`validation/validate.py grant` automates this. It discovers the current workspace user, uploads a one-shot PySpark task, and submits it to the configured cluster:
+The `metadata` Databricks Asset Bundle job automates this. Its first task (`grant_external_metadata`) runs `validation/scripts/grant_external_metadata.py` on the configured cluster, then the materialization and External Metadata API tasks run in parallel:
 
 ```bash
-# Grant to the current workspace user (reads DATABRICKS_CLUSTER_ID from .env)
 cd validation
-uv run python validate.py grant
-
-# Grant to a specific principal
-uv run python validate.py grant other.user@example.com
+uv run python validate.py metadata
 ```
 
-The script reads `DATABRICKS_PROFILE`, `DATABRICKS_CLUSTER_ID`, and `DATABRICKS_WORKSPACE_DIR` from the repo-root `.env`. `DATABRICKS_CLUSTER_ID` must point to an all-purpose cluster — serverless is not supported for the grant job.
+By default the grant target is the current workspace user. To grant to a specific principal, set `METADATA_GRANT_PRINCIPAL` in the repo-root `.env`:
 
-`uv run python validate.py metadata` calls the grant step automatically unless `--skip-grant` is passed.
+```bash
+METADATA_GRANT_PRINCIPAL=other.user@example.com
+```
+
+The job reads `DATABRICKS_CLUSTER_ID` from `.env` (via the bundle `cluster_id` variable). It must point to an all-purpose cluster, since the privilege is issued through SQL on a workspace host.
+
+For repeat runs where the bundle is already deployed, skip the deploy step:
+
+```bash
+uv run python validate.py metadata --skip-deploy
+```
 
 ---
 

@@ -6,9 +6,10 @@ each as a managed Delta table in a target catalog via the Spark Connector.
 Node labels → {catalog}.nodes.{label}
 Relationship types → {catalog}.relationships.{rel_type}
 
-Usage:
-    uv run python validate.py run --include-extras
-    uv run python validate.py submit run_extra_metadata_sync_tables.py
+Usage (via the DAB job):
+    uv run python validate.py extras             # runs as part of the extras job
+    uv run python validate.py metadata           # runs as part of the metadata job
+    databricks bundle run extras                 # equivalent, direct bundle call
 """
 
 import re

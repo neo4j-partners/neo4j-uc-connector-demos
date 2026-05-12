@@ -1,7 +1,9 @@
 """Minimal smoke test to verify remote execution on Databricks.
 
 Usage:
-    uv run python validate.py upload test_hello.py && uv run python validate.py submit test_hello.py
+    Manual smoke test, not part of any DAB job. Run on a cluster directly with
+    `databricks workspace import` + `databricks jobs submit`, or invoke the body
+    locally for a sanity check.
 """
 
 import os

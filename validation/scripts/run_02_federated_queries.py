@@ -4,9 +4,9 @@ Runs the same three federated query sections from the notebook without running
 the notebook itself. Display calls are kept for log readability, and assertions
 turn missing or mismatched results into job failures.
 
-Usage:
-    uv run python validate.py upload run_02_federated_queries.py
-    uv run python validate.py submit run_02_federated_queries.py
+Usage (via the DAB job):
+    uv run python validate.py run                # runs the full notebook_parity job
+    databricks bundle run notebook_parity        # equivalent, direct bundle call
 """
 
 import sys

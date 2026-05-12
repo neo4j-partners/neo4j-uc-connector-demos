@@ -113,7 +113,7 @@ For broader scenarios, see xref:07-example-use-cases.adoc[Example Use Cases].
 == Going Further
 
 * xref:advanced-patterns.adoc[Advanced Patterns] covers External Metadata API registration, additional federated query patterns, and performance diagnostics.
-* xref:validation.adoc[Validation] covers the Python scripts that upload to Databricks and run the notebook flows as one-time jobs.
+* xref:validation.adoc[Validation] covers the Python scripts that run the notebook flows as multi-task Databricks jobs defined in a Databricks Asset Bundle.
 * xref:uc-integration-setup.adoc[UC Integration Setup] covers the connector JAR, SafeSpark tuning, secrets, connection creation, and query APIs.
 * xref:sql-reference.adoc[SQL Reference] covers supported SQL patterns and known limitations.
 

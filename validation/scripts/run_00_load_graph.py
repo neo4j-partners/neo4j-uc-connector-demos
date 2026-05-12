@@ -13,9 +13,9 @@ Sections:
   4. Load all relationship types from CSV
   5. Verify node and relationship counts
 
-Usage (via runner):
-    uv run python validate.py upload run_00_load_graph.py
-    uv run python validate.py submit run_00_load_graph.py
+Usage (via the DAB job):
+    uv run python validate.py run                # runs the full notebook_parity job
+    databricks bundle run notebook_parity        # equivalent, direct bundle call
 """
 
 import sys

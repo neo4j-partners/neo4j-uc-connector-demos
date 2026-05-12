@@ -4,9 +4,9 @@ Covers: Python driver, Spark Connector, direct JDBC (dbtable, SQL translation,
 aggregate, NATURAL JOIN), UC connection creation, and UC JDBC queries
 (basic, remote_query, COUNT, JOIN, WHERE, multiple aggregates, COUNT DISTINCT).
 
-Usage:
-    uv run python validate.py run --include-extras
-    uv run python validate.py submit run_extra_connection_smoke.py
+Usage (via the DAB job):
+    uv run python validate.py extras             # runs the full extras job
+    databricks bundle run extras                 # equivalent, direct bundle call
 """
 
 import sys

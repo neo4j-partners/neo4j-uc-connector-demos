@@ -4,9 +4,9 @@ Materializes the same Neo4j node and traversal queries as managed Delta tables,
 then runs the same INFORMATION_SCHEMA, SQL validation, and federated Delta
 queries from the notebook.
 
-Usage:
-    uv run python validate.py upload run_03_materialized_tables.py
-    uv run python validate.py submit run_03_materialized_tables.py
+Usage (via the DAB job):
+    uv run python validate.py run                # runs the full notebook_parity job
+    databricks bundle run notebook_parity        # equivalent, direct bundle call
 """
 
 import sys
@@ -245,7 +245,7 @@ def main() -> None:
             f"""
             SELECT a.aircraftId, a.model, a.operator,
                    COUNT(DISTINCT m.eventId) AS maintenance_events,
-                   SUM(CASE WHEN m.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_events,
+                   COUNT(DISTINCT CASE WHEN m.severity = 'CRITICAL' THEN m.eventId END) AS critical_events,
                    COUNT(DISTINCT s.sensorId) AS sensor_count,
                    ROUND(AVG(r.value), 2) AS avg_sensor_reading
             FROM {fqn}.neo4j_aircraft a
@@ -255,7 +255,10 @@ def main() -> None:
             GROUP BY a.aircraftId, a.model, a.operator
             ORDER BY critical_events DESC, maintenance_events DESC
             """,
-            lambda rows: len(rows) == 20,
+            lambda rows: (
+                len(rows) == 20
+                and all(row["critical_events"] <= row["maintenance_events"] for row in rows)
+            ),
         ),
         (
             "Federated Query 2: Route Analysis",

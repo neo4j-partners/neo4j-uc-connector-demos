@@ -3,9 +3,9 @@
 Verifies Delta lakehouse tables and Neo4j counts, then runs federated queries
 combining both sources via remote_query() (UC JDBC) and Spark Connector.
 
-Usage:
-    uv run python validate.py run --include-extras
-    uv run python validate.py submit run_extra_federated_regression.py
+Usage (via the DAB job):
+    uv run python validate.py extras             # runs the full extras job
+    databricks bundle run extras                 # equivalent, direct bundle call
 """
 
 import sys

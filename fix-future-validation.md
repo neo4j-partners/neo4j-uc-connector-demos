@@ -83,6 +83,21 @@ Notes from running the end-to-end validation pipeline on 2026-05-11.
 - Future cleanup: define explicit expected cardinalities only where the
   notebook or dataset contract actually guarantees them.
 
+## Notebook Query Semantics
+
+- `getting-started/03-materialized-tables.ipynb` Section 5,
+  "Federated Query 1: Aircraft Health Overview", appears to overcount
+  `critical_events`.
+- The query joins aircraft to maintenance events, sensors, and all
+  `sensor_readings`, then calculates:
+  `SUM(CASE WHEN m.severity = 'CRITICAL' THEN 1 ELSE 0 END)`.
+- Because each maintenance row is multiplied by sensor reading rows, the output
+  showed values such as `69120` critical events for one aircraft, while the
+  dataset has only 300 total maintenance events.
+- Fix: pre-aggregate maintenance events per aircraft before joining to sensor
+  readings, or change the expression to count distinct critical event IDs.
+  Update the matching validation script at the same time.
+
 ## Local Environment Drift
 
 - An old direct-runner waiter failed locally with a missing certifi CA bundle

@@ -76,6 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Lint the validation scripts and validate the bundle definition.",
     )
     p_check.add_argument("--no-sync", action="store_true", help="Skip uv sync --locked")
+    add_bundle_options(p_check)
     p_check.set_defaults(func=cmd_check)
 
     for name, job in JOBS.items():
@@ -83,11 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
             name,
             help=f"Deploy the bundle and run the `{job}` job.",
         )
-        p.add_argument(
-            "--target", "-t",
-            default=None,
-            help="Bundle target to deploy/run against (default: bundle default target).",
-        )
+        add_bundle_options(p)
         p.add_argument(
             "--skip-deploy",
             action="store_true",
@@ -98,40 +95,76 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def add_bundle_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--target",
+        "-t",
+        default=None,
+        help="Bundle target to deploy/run against (default: bundle default target).",
+    )
+    parser.add_argument(
+        "--profile",
+        "-p",
+        default=None,
+        help="Databricks CLI profile (default: DATABRICKS_PROFILE from .env).",
+    )
+
+
 def cmd_check(args: argparse.Namespace) -> int:
+    env = load_env()
     if not args.no_sync:
         run_process(["uv", "sync", "--locked"], cwd=VALIDATION_DIR)
     run_process(["uv", "run", "ruff", "check", "validate.py", "scripts"], cwd=VALIDATION_DIR)
-    run_process(["databricks", "bundle", "validate", *bundle_var_args()], cwd=PROJECT_DIR)
+    run_process(
+        [
+            "databricks",
+            "bundle",
+            "validate",
+            *bundle_option_args(args, env),
+            *bundle_var_args(env),
+        ],
+        cwd=PROJECT_DIR,
+    )
     print("check: OK")
     return 0
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    var_args = bundle_var_args()
-    target_args = ["-t", args.target] if args.target else []
+    env = load_env()
+    option_args = bundle_option_args(args, env)
+    var_args = bundle_var_args(env)
 
     if not args.skip_deploy:
         run_process(
-            ["databricks", "bundle", "deploy", *target_args, *var_args],
+            ["databricks", "bundle", "deploy", *option_args, *var_args],
             cwd=PROJECT_DIR,
         )
 
     run_process(
-        ["databricks", "bundle", "run", args.job, *target_args, *var_args],
+        ["databricks", "bundle", "run", args.job, *option_args, *var_args],
         cwd=PROJECT_DIR,
     )
     return 0
 
 
-def bundle_var_args() -> list[str]:
+def bundle_option_args(args: argparse.Namespace, env: dict[str, str]) -> list[str]:
+    """Return Databricks bundle global option args from CLI flags and .env."""
+    option_args: list[str] = []
+    profile = (args.profile or env.get("DATABRICKS_PROFILE") or "").strip()
+    if profile:
+        option_args.extend(["--profile", profile])
+    if args.target:
+        option_args.extend(["--target", args.target])
+    return option_args
+
+
+def bundle_var_args(env: dict[str, str]) -> list[str]:
     """Return [--var k=v, --var k=v, ...] derived from the repo-root .env."""
     if shutil.which("databricks") is None:
         raise CommandError(
             "databricks CLI not on PATH. Install per "
             "https://docs.databricks.com/dev-tools/cli/install.html"
         )
-    env = load_env()
     vars_seen: dict[str, str] = {}
     for env_key, var_name in ENV_TO_VAR.items():
         value = (env.get(env_key) or "").strip()
@@ -161,7 +194,7 @@ def load_env() -> dict[str, str]:
 
 def run_process(command: list[str], *, cwd: Path) -> None:
     pretty = shlex.join(command)
-    print(f"  $ {pretty}")
+    print(f"  $ {pretty}", flush=True)
     try:
         subprocess.run(command, cwd=cwd, check=True)
     except subprocess.CalledProcessError as exc:

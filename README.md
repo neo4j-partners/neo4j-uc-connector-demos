@@ -76,7 +76,7 @@ For cluster configuration, setup steps, and notebook details, see [getting-start
 
 **Advanced Patterns.** The `advanced-patterns/` directory builds on the getting-started notebooks with metadata sync via the UC External Metadata API, additional federated query patterns combining `remote_query()` with Spark Connector reads and Delta joins, and performance diagnostics. See [advanced-patterns/README.md](./advanced-patterns/README.md).
 
-**Validation.** The `validation/` directory contains Python scripts that upload to a Databricks workspace and run as one-time jobs. They cover data load, connection validation, federated queries, metadata sync, and advanced Spark patterns — automated end-to-end smoke testing without manual notebook execution. See [validation/README.md](./validation/README.md).
+**Validation.** The `validation/` directory contains Python scripts that run on Databricks as multi-task jobs defined in a Databricks Asset Bundle (`databricks.yml` plus `resources/*.yml`). They cover data load, connection validation, federated queries, metadata sync, and advanced Spark patterns, providing automated end-to-end smoke testing without manual notebook execution. See [validation/README.md](./validation/README.md).
 
 **Reference Docs.** The `docs/` directory contains detailed technical documentation:
 - [neo4j_uc_jdbc_guide.md](./docs/neo4j_uc_jdbc_guide.md) — JDBC setup reference, query patterns, type mappings, and troubleshooting

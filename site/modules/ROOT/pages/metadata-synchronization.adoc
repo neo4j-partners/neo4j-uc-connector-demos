@@ -107,22 +107,15 @@ SHOW INDEXES YIELD *
 
 External metadata registration requires `CREATE_EXTERNAL_METADATA` on the metastore. Without it, the API returns `PERMISSION_DENIED`.
 
-The validation workflow automates the grant through a one-shot Databricks job:
+The validation workflow automates the grant as the first task of the `metadata` DAB job. Running the full metadata validation issues the grant and then runs both metadata paths:
 
 [source,bash]
 ----
 cd validation
-uv run python validate.py grant
-----
-
-To run the full metadata validation:
-
-[source,bash]
-----
 uv run python validate.py metadata
 ----
 
-The grant job requires `DATABRICKS_CLUSTER_ID` because the privilege is issued through SQL on a workspace cluster.
+The grant task requires `DATABRICKS_CLUSTER_ID` because the privilege is issued through SQL on a workspace cluster.
 
 == When to Use Each Approach
 

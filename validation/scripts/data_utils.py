@@ -40,7 +40,7 @@ RUNTIME_ERRORS: tuple[type[BaseException], ...] = (
 
 
 # ---------------------------------------------------------------------------
-# Parameter injection (inline — databricks-job-runner not available on cluster)
+# Parameter injection (parses KEY=VALUE args passed by the DAB job task)
 # ---------------------------------------------------------------------------
 
 def inject_params() -> None:
