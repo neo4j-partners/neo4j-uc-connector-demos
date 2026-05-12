@@ -2,7 +2,7 @@
 
 Advanced Databricks notebooks that build on the four-step tutorial in
 [`../getting-started`](../getting-started). Run the tutorial first to load the
-aircraft digital twin graph and create the UC JDBC connection — these notebooks
+aircraft digital twin graph and create the UC JDBC connection. These notebooks
 assume that baseline is already in place.
 
 ## Notebooks
@@ -48,7 +48,7 @@ cp .env.sample .env
 `create_secrets.sh` stores `NEO4J_USERNAME` and `NEO4J_PASSWORD` in the scope
 named by `DATABRICKS_SECRET_SCOPE` (default `neo4j-uc-demos`). Each notebook's
 configuration cell hardcodes non-secret values (host, connection name, lakehouse
-catalog/schema) — edit them for your environment.
+catalog/schema). Edit them for your environment.
 
 ### 3. Cluster Requirements
 
@@ -61,8 +61,8 @@ catalog/schema) — edit them for your environment.
 
 Install cluster libraries:
 
-- Neo4j Spark Connector — Maven: `org.neo4j:neo4j-connector-apache-spark_2.12:5.4.0_for_spark_3`
-- Neo4j Python driver — PyPI: `neo4j`
+- Neo4j Spark Connector via Maven: `org.neo4j:neo4j-connector-apache-spark_2.12:5.4.0_for_spark_3`
+- Neo4j Python driver via PyPI: `neo4j`
 
 SafeSpark metaspace setting:
 
@@ -72,7 +72,7 @@ spark.databricks.safespark.jdbcSandbox.jvm.maxMetaspace.mib 128
 
 ## Reference Documentation
 
-- [`../docs/neo4j_uc_jdbc_guide.md`](../docs/neo4j_uc_jdbc_guide.md) — UC JDBC connection setup
-- [`../docs/metadata_synchronization.md`](../docs/metadata_synchronization.md) — Metadata sync design
+- [`../docs/neo4j_uc_jdbc_guide.md`](../docs/neo4j_uc_jdbc_guide.md): UC JDBC connection setup
+- [`../docs/metadata_synchronization.md`](../docs/metadata_synchronization.md): Metadata sync design
 - [Neo4j JDBC Driver Manual](https://neo4j.com/docs/jdbc-manual/current/)
 - [Databricks JDBC Unity Catalog Connection](https://docs.databricks.com/aws/en/connect/jdbc-connection)

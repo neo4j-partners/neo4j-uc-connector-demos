@@ -1,7 +1,7 @@
 = Aircraft Digital Twin: Dataset Schema
 :description: Node types, relationship types, property names, expected row counts, and CSV file inventory for the aircraft digital twin graph used throughout this guide
 
-The aircraft digital twin dataset models a fleet of 20 commercial aircraft operating across 12 airports. The graph connects aircraft maintenance history, flight operations, and sensor topology — this structure is what makes the federated queries throughout this guide possible. When a query joins Neo4j maintenance counts with Delta sensor readings, it is traversing this graph on the Neo4j side and joining on `aircraftId` or `sensorId` on the Delta side.
+The aircraft digital twin dataset models a fleet of 20 commercial aircraft operating across 12 airports. The graph connects aircraft maintenance history, flight operations, and sensor topology. This structure is what makes the federated queries throughout this guide possible. When a query joins Neo4j maintenance counts with Delta sensor readings, it is traversing this graph on the Neo4j side and joining on `aircraftId` or `sensorId` on the Delta side.
 
 == Node Types
 

@@ -52,31 +52,31 @@ The dataset is an aircraft digital twin: 20 aircraft across four operators (Exam
 - 12 Airport nodes
 
 **Databricks Delta (tabular data)**
-- `sensor_readings` — 172,800 rows: `readingId`, `sensorId`, `ts`, `value`
+- `sensor_readings`: 172,800 rows with `readingId`, `sensorId`, `ts`, `value`
 
 The `sensorId` is the join key across both systems. Graph topology answers which sensors belong to which aircraft systems; Delta analytics answers what those sensors actually measured.
 
 ## Notebooks
 
-### 00 — Load Graph
+### 00: Load Graph
 
 Loads the full aircraft digital twin dataset into Neo4j from CSV files in a UC Volume. Clears any existing data, creates indexes on all ID properties, loads all eight node types, creates all eight relationship types, and verifies expected counts.
 
 Run this once before the other notebooks.
 
-### 01 — Connection Setup
+### 01: Connection Setup
 
 Creates the `sensor_readings` Delta table from the CSV in the UC Volume, creates and validates the Unity Catalog JDBC connection, and runs basic SQL queries against Neo4j through the connector.
 
 The UC JDBC connection created here is reused by notebooks 02 and 03.
 
-### 02 — Federated Queries
+### 02: Federated Queries
 
 Runs three queries that span both systems. Query 1 joins Neo4j graph topology (aircraft → system → sensor via NATURAL JOIN) with Delta sensor statistics. Query 2 combines Neo4j maintenance event counts with Delta sensor averages per aircraft. Query 3 runs pure Neo4j graph analytics on flight operations and delay causes.
 
-### 03 — Materialized Tables
+### 03: Materialized Tables
 
-Reads all Neo4j node labels via UC JDBC and writes them as managed Delta tables in Unity Catalog. Once materialized, the data supports full SQL: GROUP BY, ORDER BY, WHERE, aggregations, DISTINCT, and multi-table JOINs — all without JDBC at query time. Four federated queries then join the materialized graph tables with `sensor_readings` in pure SQL.
+Reads all Neo4j node labels via UC JDBC and writes them as managed Delta tables in Unity Catalog. Once materialized, the data supports full SQL: GROUP BY, ORDER BY, WHERE, aggregations, DISTINCT, and multi-table JOINs, all without JDBC at query time. Four federated queries then join the materialized graph tables with `sensor_readings` in pure SQL.
 
 ## Setup
 
@@ -107,9 +107,9 @@ Install on your Databricks cluster:
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| neo4j (Python) | 6.0+ | Neo4j Python Driver — required for notebook 00 |
+| neo4j (Python) | 6.0+ | Neo4j Python Driver, required for notebook 00 |
 
-For UC JDBC connections, the `java_dependencies` option in `CREATE CONNECTION` references the JAR in a UC Volume. The Python driver is only needed for notebook 00 (graph loading).
+For UC JDBC connections, the `java_dependencies` option in `CREATE CONNECTION` references the JAR in a UC Volume. The Python driver is only needed for notebook 00, which loads the graph.
 
 ### Required Spark Configuration
 
@@ -154,9 +154,9 @@ values. Set up the secret scope from the root `.env`:
 ./create_secrets.sh
 ```
 
-This creates a secret scope named `neo4j-uc-demos` (configurable via
-`DATABRICKS_SECRET_SCOPE` in `.env`) and stores `NEO4J_URI`,
-`NEO4J_USERNAME`, and `NEO4J_PASSWORD` as secrets.
+This creates a secret scope named `neo4j-uc-demos` and stores `NEO4J_URI`,
+`NEO4J_USERNAME`, and `NEO4J_PASSWORD` as secrets. The scope name is
+configurable via `DATABRICKS_SECRET_SCOPE` in `.env`.
 
 The notebooks retrieve credentials at runtime:
 
@@ -174,7 +174,7 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 1. Copy and fill in the root config: `cp .env.sample .env`
 2. Upload CSV data: `./getting-started/upload_data.sh`
 3. Create secrets: `./create_secrets.sh`
-4. Open each notebook and edit its configuration cell — set `UC_CATALOG` and `JDBC_JAR_PATH` to match the values in your `.env`. `NEO4J_URI`, `NEO4J_USERNAME`, and `NEO4J_PASSWORD` are read from the Databricks secret scope, so no editing is needed for them. The notebook config cells are independent of `.env`; Databricks notebooks don't read the local file.
+4. Open each notebook and edit its configuration cell. Set `UC_CATALOG` and `JDBC_JAR_PATH` to match the values in your `.env`. `NEO4J_URI`, `NEO4J_USERNAME`, and `NEO4J_PASSWORD` are read from the Databricks secret scope, so no editing is needed for them. The notebook config cells are independent of `.env`; Databricks notebooks don't read the local file.
 5. Run `00-load-graph.ipynb` to load the aircraft graph into Neo4j.
 6. Run `01-neo4j-uc-connection-setup.ipynb` to create the `sensor_readings` table and UC JDBC connection.
 7. Run `02-federated-queries.ipynb` for live federated queries.
@@ -186,4 +186,4 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 
 **camelCase properties.** Neo4j best practice uses camelCase for property names (`aircraftId`, `sensorId`, `flightId`). Graph properties and Delta tables in these notebooks follow that convention. Raw CSV import headers may use snake_case, but notebook 01 normalizes them when creating Delta tables.
 
-**Data volume.** The dataset uses 20 aircraft and 172,800 sensor readings — small enough for quick iteration. The same patterns apply to larger graphs, though materialization becomes more important as graph size and query latency grow.
+**Data volume.** The dataset uses 20 aircraft and 172,800 sensor readings, small enough for quick iteration. The same patterns apply to larger graphs, though materialization becomes more important as graph size and query latency grow.

@@ -7,7 +7,7 @@ Five failure modes appear consistently across setup and query execution. Each ha
 
 *Error:* `Connection was closed before the operation completed`
 
-The Neo4j JDBC driver loads substantially more classes during initialization than standard JDBC drivers. The SQL-to-Cypher translator requires an ANTLR grammar and parser at startup, pushing metaspace consumption past the SafeSpark sandbox default. Every connection attempt fails immediately — the driver starts initializing, the sandbox kills the JVM, and Spark surfaces a generic connection error.
+The Neo4j JDBC driver loads substantially more classes during initialization than standard JDBC drivers. The SQL-to-Cypher translator requires an ANTLR grammar and parser at startup, pushing metaspace consumption past the SafeSpark sandbox default. Every connection attempt fails immediately. The driver starts initializing, the sandbox kills the JVM, and Spark surfaces a generic connection error.
 
 Add these settings to the cluster's **Advanced Options > Spark > Spark Config** and restart the cluster:
 

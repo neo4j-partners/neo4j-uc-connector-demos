@@ -94,9 +94,10 @@ Notes from running the end-to-end validation pipeline on 2026-05-11.
 - Because each maintenance row is multiplied by sensor reading rows, the output
   showed values such as `69120` critical events for one aircraft, while the
   dataset has only 300 total maintenance events.
-- Fix: pre-aggregate maintenance events per aircraft before joining to sensor
-  readings, or change the expression to count distinct critical event IDs.
-  Update the matching validation script at the same time.
+- Fixed: `getting-started/03-materialized-tables.ipynb` and
+  `validation/scripts/run_03_materialized_tables.py` now count distinct
+  critical event IDs, and validation asserts critical events do not exceed total
+  maintenance events per aircraft.
 
 ## Local Environment Drift
 
