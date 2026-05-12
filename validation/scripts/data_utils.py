@@ -6,7 +6,8 @@ parses those into os.environ and fetches Neo4j credentials from the Databricks
 secret scope.
 
 Provides:
-- inject_params / get_config — parameter injection and config building
+- inject_params — parse KEY=VALUE job parameters into os.environ
+- Config / get_config — frozen dataclass built from the resolved environment
 - csv_rows — Neo4j import CSV reader (used by run_00_load_graph)
 - Neo4j connection helpers
 - UC JDBC read helpers (DataFrame API and remote_query)
@@ -159,7 +160,7 @@ def _with_default_port(host: str, port: int) -> str:
 # CSV helpers
 # ---------------------------------------------------------------------------
 
-def csv_rows(path: str) -> list:
+def csv_rows(path: str) -> list[dict[str, str]]:
     """Read a Neo4j import CSV and normalize column names.
 
     Converts Neo4j import column prefixes to plain names:
@@ -168,10 +169,10 @@ def csv_rows(path: str) -> list:
       :END_ID(Label)   → end_id
       :TYPE            → type
     """
-    rows = []
+    rows: list[dict[str, str]] = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            norm = {}
+            norm: dict[str, str] = {}
             for k, v in row.items():
                 if k.startswith(":ID("):
                     norm["id"] = v
@@ -233,8 +234,8 @@ def remote_query(spark, cfg: Config, query: str):
 class ValidationResults:
     """Collects PASS/FAIL results and prints a summary."""
 
-    def __init__(self):
-        self.results = []
+    def __init__(self) -> None:
+        self.results: list[tuple[str, bool, str]] = []
 
     def record(self, name: str, passed: bool, detail: str = "") -> None:
         status = "PASS" if passed else "FAIL"

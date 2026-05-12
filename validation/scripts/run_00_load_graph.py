@@ -36,7 +36,7 @@ def main():
     print("run_00_load_graph: Aircraft Digital Twin Graph Setup")
     print("=" * 60)
     print("Notebook: getting-started/00-load-graph.ipynb")
-    print(f"  Neo4j URI: {cfg.neo4j_uri}")
+    print(f"  Neo4j URI: {cfg.neo4j_bolt_uri}")
     print(f"  Volume:    {vol}")
     print("")
 
