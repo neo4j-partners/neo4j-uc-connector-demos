@@ -48,7 +48,7 @@ When Databricks refers to "Unity Catalog metadata synchronization," they mean ma
 - **Lineage tracking:** Data lineage from Neo4j through downstream Spark jobs and dashboards
 - **Schema documentation:** Column types, descriptions, and tags managed centrally in UC
 
-This is distinct from what the existing JDBC connection provides. The JDBC connection (`CREATE CONNECTION ... TYPE JDBC`) registers credentials and a driver — it does not expose Neo4j's schema as browsable UC objects.
+This is distinct from what the existing JDBC connection provides. The JDBC connection (`CREATE CONNECTION ... TYPE JDBC`) registers credentials and a driver; it does not expose Neo4j's schema as browsable UC objects.
 
 ---
 
@@ -66,7 +66,7 @@ This is distinct from what the existing JDBC connection provides. The JDBC conne
 
 ## Why Neo4j Requires a Custom Solution
 
-Databricks provides automatic metadata sync for [Lakehouse Federation](https://docs.databricks.com/aws/en/query-federation/) sources — but only for these databases: MySQL, PostgreSQL, Oracle, Teradata, Redshift, SQL Server, Azure Synapse, BigQuery, Snowflake, Salesforce Data Cloud, and Databricks-to-Databricks.
+Databricks provides automatic metadata sync for [Lakehouse Federation](https://docs.databricks.com/aws/en/query-federation/) sources, but only for these databases: MySQL, PostgreSQL, Oracle, Teradata, Redshift, SQL Server, Azure Synapse, BigQuery, Snowflake, Salesforce Data Cloud, and Databricks-to-Databricks.
 
 For federated sources, Unity Catalog syncs the remote schema on every interaction:
 
@@ -155,9 +155,9 @@ SHOW INDEXES YIELD *
 
 ### Recommended Combination
 
-1. `CALL apoc.meta.schema({sample: -1})` — property names, types, indexed/unique flags, counts
-2. `SHOW CONSTRAINTS YIELD *` — precise constraint types and mandatory enforcement
-3. `SHOW INDEXES YIELD *` — standalone (non-constraint) indexes
+1. `CALL apoc.meta.schema({sample: -1})`: property names, types, indexed/unique flags, counts
+2. `SHOW CONSTRAINTS YIELD *`: precise constraint types and mandatory enforcement
+3. `SHOW INDEXES YIELD *`: standalone (non-constraint) indexes
 
 ---
 
@@ -302,7 +302,7 @@ Register Neo4j labels/relationships as `EXTERNAL` or `FOREIGN` table entries in 
 - Can be queried via SQL `INFORMATION_SCHEMA`
 
 **Cons:**
-- `EXTERNAL` tables require a `storage_location` — would need a workaround or placeholder
+- `EXTERNAL` tables require a `storage_location`, which would need a workaround or placeholder
 - May not support actual query routing back to Neo4j without additional plumbing
 - Table metadata becomes stale if Neo4j schema changes (requires re-sync)
 
@@ -359,10 +359,10 @@ Register Neo4j objects as external metadata entries, designed for systems outsid
 - Supports lineage tracking via the External Lineage API
 
 **Cons:**
-- `columns` is `Array<string>` — no type info per column (types must go in `properties`)
-- Does **not** appear in `INFORMATION_SCHEMA.TABLES` — only queryable via REST API
-- No `NEO4J` enum for `system_type` — must use `OTHER`
-- Public Preview — API may change
+- `columns` is `Array<string>`, with no type info per column (types must go in `properties`)
+- Does **not** appear in `INFORMATION_SCHEMA.TABLES`; only queryable via REST API
+- No `NEO4J` enum for `system_type`; must use `OTHER`
+- Public Preview; API may change
 - No direct query routing to Neo4j
 
 ### Approach 3: Materialized Delta Tables (Data Copy)
@@ -377,23 +377,23 @@ df = (spark.read.format("jdbc")
       .option("query", "SELECT aircraftId, model, manufacturer FROM Aircraft")
       .load())
 
-# Write to UC as a managed Delta table — schema is registered automatically
+# Write to UC as a managed Delta table; schema is registered automatically
 df.write.format("delta").mode("overwrite").saveAsTable("neo4j_catalog.nodes.aircraft")
 ```
 
 **Pros:**
-- Full UC integration — tables, columns, types, statistics, lineage all work automatically
+- Full UC integration: tables, columns, types, statistics, lineage all work automatically
 - Data is queryable via standard SQL (`SELECT * FROM neo4j_catalog.nodes.aircraft`)
 - Delta features (time travel, ACID transactions, optimization) apply
-- No custom sync code for metadata — schema is inferred from the DataFrame
+- No custom sync code for metadata; schema is inferred from the DataFrame
 - Uses the same UC JDBC connection as federation, so no Spark Connector or single-user cluster is required
 
 **Cons:**
-- Copies data — not a live view of Neo4j
+- Copies data; not a live view of Neo4j
 - Requires scheduled refresh jobs to keep data current
 - Storage cost for duplicated data
 - `customSchema` is needed per query to avoid `NullType` inference on JDBC reads
-- Loses graph structure — traversals require SQL JOINs
+- Loses graph structure; traversals require SQL JOINs
 
 ---
 
@@ -441,11 +441,11 @@ A hybrid approach combining metadata registration with query routing:
 
 ### Sync Pipeline Steps
 
-1. **Introspect Neo4j schema** — Call `apoc.meta.schema()` + `SHOW CONSTRAINTS` via the Neo4j Python driver or JDBC
-2. **Map to UC model** — Convert labels → tables, properties → columns, Neo4j types → UC types
-3. **Register metadata in UC** — Use Tables REST API or External Metadata API
-4. **Optionally materialize data** — Write high-value labels as Delta tables for SQL querying
-5. **Schedule periodic sync** — Run as a Databricks job to detect schema changes
+1. **Introspect Neo4j schema**: Call `apoc.meta.schema()` + `SHOW CONSTRAINTS` via the Neo4j Python driver or JDBC
+2. **Map to UC model**: Convert labels → tables, properties → columns, Neo4j types → UC types
+3. **Register metadata in UC**: Use Tables REST API or External Metadata API
+4. **Optionally materialize data**: Write high-value labels as Delta tables for SQL querying
+5. **Schedule periodic sync**: Run as a Databricks job to detect schema changes
 
 ### Sync Pipeline Implementation Sketch
 
@@ -559,7 +559,7 @@ For External Metadata API objects (if using Approach 2):
 # List external metadata objects
 GET /api/2.0/lineage-tracking/external-metadata
 
-# These do NOT appear in INFORMATION_SCHEMA — REST API only
+# These do NOT appear in INFORMATION_SCHEMA; REST API only
 ```
 
 ---
@@ -587,7 +587,7 @@ Two notebooks in `advanced-patterns/` implement the approaches described above:
 | Notebook | Implements | What It Does |
 |----------|-----------|--------------|
 | [`getting-started/03-materialized-tables.ipynb`](../getting-started/03-materialized-tables.ipynb) | Approach 3 (Materialized Delta Tables) | Reads each Neo4j node label through the UC JDBC connection and writes it as a managed Delta table, then queries `INFORMATION_SCHEMA` to confirm UC has registered the schema automatically. Uses the same JDBC path as federation, so no Spark Connector or single-user cluster is required. |
-| [`05_metadata_sync_external_api.ipynb`](../advanced-patterns/05_metadata_sync_external_api.ipynb) | Approach 2 (External Metadata API) | Discovers the Neo4j schema, then registers each node label and relationship type via the [External Metadata REST API](https://docs.databricks.com/api/workspace/externalmetadata). No data is copied — metadata-only registration for discoverability and lineage. Encodes Neo4j property types in the metadata properties map. Includes optional cleanup to delete registered objects. |
+| [`05_metadata_sync_external_api.ipynb`](../advanced-patterns/05_metadata_sync_external_api.ipynb) | Approach 2 (External Metadata API) | Discovers the Neo4j schema, then registers each node label and relationship type via the [External Metadata REST API](https://docs.databricks.com/api/workspace/externalmetadata). No data is copied; this is metadata-only registration for discoverability and lineage. Encodes Neo4j property types in the metadata properties map. Includes optional cleanup to delete registered objects. |
 
 ---
 
@@ -595,10 +595,10 @@ Two notebooks in `advanced-patterns/` implement the approaches described above:
 
 - [Databricks Lakehouse Federation](https://docs.databricks.com/aws/en/query-federation/)
 - [Databricks JDBC Connection](https://docs.databricks.com/aws/en/connect/jdbc-connection)
-- [Unity Catalog REST API — Tables](https://docs.databricks.com/api/workspace/tables)
-- [Unity Catalog REST API — External Metadata](https://docs.databricks.com/api/workspace/externalmetadata)
-- [Unity Catalog REST API — External Lineage](https://docs.databricks.com/api/workspace/externallineage)
+- [Unity Catalog REST API: Tables](https://docs.databricks.com/api/workspace/tables)
+- [Unity Catalog REST API: External Metadata](https://docs.databricks.com/api/workspace/externalmetadata)
+- [Unity Catalog REST API: External Lineage](https://docs.databricks.com/api/workspace/externallineage)
 - [Unity Catalog INFORMATION_SCHEMA](https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-information-schema.html)
 - [Neo4j APOC meta.schema()](https://neo4j.com/docs/apoc/current/overview/apoc.meta/apoc.meta.schema/)
-- [Neo4j Spark Connector — Databricks](https://neo4j.com/docs/spark/current/databricks/)
+- [Neo4j Spark Connector: Databricks](https://neo4j.com/docs/spark/current/databricks/)
 - [Neo4j JDBC Driver](https://neo4j.com/docs/jdbc-manual/current/)

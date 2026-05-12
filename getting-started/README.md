@@ -157,8 +157,9 @@ the secret scope from the root `.env`:
 
 This creates a secret scope named `neo4j-uc-demos` and stores `NEO4J_URI`,
 `NEO4J_USERNAME`, `NEO4J_PASSWORD`, `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`,
-`JDBC_JAR_PATH`, and `UC_CONNECTION_NAME` as secrets. The scope name is
-configurable via `DATABRICKS_SECRET_SCOPE` in `.env`.
+`JDBC_JAR_PATH`, `UC_CONNECTION_NAME`, and optional lakehouse settings as
+secrets. The scope name is configurable via `DATABRICKS_SECRET_SCOPE` in
+`.env`.
 
 The notebooks retrieve configuration at runtime:
 

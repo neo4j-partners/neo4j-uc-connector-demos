@@ -2,7 +2,7 @@
 
 Discovers all node labels and relationship types from Neo4j, then registers
 each as an external metadata entry in Unity Catalog via the External Metadata
-API. No Delta tables are created — this registers metadata only.
+API. No Delta tables are created; this registers metadata only.
 
 Usage (via the DAB job):
     uv run python validate.py run                # runs as part of the notebook_parity job
@@ -171,9 +171,9 @@ def discover_schema(cfg: Config, vr: ValidationResults):
                   f"{len(discovered_relationships)} types")
 
         for label, props in sorted(discovered_labels.items()):
-            print(f"    :{label} — {len(props)} properties")
+            print(f"    :{label}, {len(props)} properties")
         for rel_type, props in sorted(discovered_relationships.items()):
-            print(f"    [:{rel_type}] — {len(props)} properties")
+            print(f"    [:{rel_type}], {len(props)} properties")
 
     except RUNTIME_ERRORS as e:
         vr.record("Schema discovery", False, str(e)[:120])
@@ -369,7 +369,7 @@ def main() -> None:
             vr.record(f"Register rel: {rel_type}", False, str(e)[:120])
 
     # ------------------------------------------------------------------
-    # Section 7: Verify — List Registered External Metadata
+    # Section 7: Verify, List Registered External Metadata
     # ------------------------------------------------------------------
     print("\n--- Verify Registered Metadata ---")
     try:
@@ -403,7 +403,7 @@ def main() -> None:
         vr.record("Verify: list external metadata", False, str(e)[:120])
 
     # ------------------------------------------------------------------
-    # Section 8: Cleanup — delete what we registered
+    # Section 8: Cleanup, delete what we registered
     # ------------------------------------------------------------------
     print(f"\n--- Cleanup ({len(registered_ids)} objects) ---")
     deleted = 0

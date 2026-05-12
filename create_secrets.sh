@@ -32,6 +32,7 @@ SECRET_KEYS=(
     UC_VOLUME
     JDBC_JAR_PATH
     UC_CONNECTION_NAME
+    LAKEHOUSE_SCHEMA
 )
 
 if [ -z "$SCOPE" ]; then

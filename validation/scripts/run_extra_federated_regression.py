@@ -119,7 +119,7 @@ def main() -> None:
         vr.record("Neo4j traversal: Flight→Airport", False, str(e)[:120])
 
     # ============================================================================
-    # Section 3: Federated Query — Fleet Summary (remote_query only)
+    # Section 3: Federated Query, Fleet Summary (remote_query only)
     # ============================================================================
     print("\n--- Federated: Fleet Summary ---")
     try:
@@ -215,7 +215,7 @@ def main() -> None:
         vr.record("Spark Connector: Flight", False, str(e)[:120])
 
     # ============================================================================
-    # Section 5: Federated — Sensor Health + Maintenance Correlation
+    # Section 5: Federated, Sensor Health + Maintenance Correlation
     # ============================================================================
     print("\n--- Federated: Sensor Health + Maintenance ---")
     try:
@@ -268,7 +268,7 @@ def main() -> None:
         vr.record("Federated: sensor+maintenance", False, str(e)[:200])
 
     # ============================================================================
-    # Section 6: Federated — Flight Operations + Engine Performance
+    # Section 6: Federated, Flight Operations + Engine Performance
     # ============================================================================
     print("\n--- Federated: Flight Ops + Engine Health ---")
     try:
@@ -316,7 +316,7 @@ def main() -> None:
         vr.record("Federated: flights+engine", False, str(e)[:200])
 
     # ============================================================================
-    # Section 7: Federated — Fleet Health Dashboard (both methods)
+    # Section 7: Federated, Fleet Health Dashboard (both methods)
     # ============================================================================
     print("\n--- Federated: Fleet Health Dashboard ---")
     try:

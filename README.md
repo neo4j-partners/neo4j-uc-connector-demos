@@ -25,7 +25,7 @@ You also need:
 - A Neo4j Aura instance
 - The Neo4j JDBC Lakehouse Federation Connector JAR, downloaded from [neo4j-unity-catalog-connector releases](https://github.com/neo4j-labs/neo4j-unity-catalog-connector/tags) and uploaded to a Unity Catalog Volume
 
-The cluster also requires SafeSpark metaspace tuning — see [SafeSpark Configuration](#safespark-configuration) below.
+The cluster also requires SafeSpark metaspace tuning. See [SafeSpark Configuration](#safespark-configuration) below.
 
 ### Configure
 
@@ -53,7 +53,7 @@ Notebooks retrieve Neo4j credentials, UC settings, the JDBC JAR path, and the co
 ./create_secrets.sh
 ```
 
-This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores the Neo4j credentials plus `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `JDBC_JAR_PATH`, and `UC_CONNECTION_NAME`.
+This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores the Neo4j credentials plus the shared UC, JDBC, and optional lakehouse settings.
 
 ---
 
@@ -79,9 +79,9 @@ For cluster configuration, setup steps, and notebook details, see [getting-start
 **Validation.** The `validation/` directory contains Python scripts that run on Databricks as multi-task jobs defined in a Databricks Asset Bundle (`databricks.yml` plus `resources/*.yml`). They cover data load, connection validation, federated queries, metadata sync, and advanced Spark patterns, providing automated end-to-end smoke testing without manual notebook execution. See [validation/README.md](./validation/README.md).
 
 **Reference Docs.** The `docs/` directory contains detailed technical documentation:
-- [neo4j_uc_jdbc_guide.md](./docs/neo4j_uc_jdbc_guide.md) — JDBC setup reference, query patterns, type mappings, and troubleshooting
-- [metadata_synchronization.md](./docs/metadata_synchronization.md) — Metadata sync design, type mappings, and External Metadata API implementation
-- [neo4j-offiicial-data-source-unlock.md](./docs/neo4j-offiicial-data-source-unlock.md) — What official federated data source status would unlock
+- [neo4j_uc_jdbc_guide.md](./docs/neo4j_uc_jdbc_guide.md): JDBC setup reference, query patterns, type mappings, and troubleshooting
+- [metadata_synchronization.md](./docs/metadata_synchronization.md): Metadata sync design, type mappings, and External Metadata API implementation
+- [neo4j-offiicial-data-source-unlock.md](./docs/neo4j-offiicial-data-source-unlock.md): What official federated data source status would unlock
 
 ---
 

@@ -45,9 +45,10 @@ cp .env.sample .env
 ./create_secrets.sh
 ```
 
-`create_secrets.sh` stores Neo4j credentials plus shared UC settings in the
-scope named by `DATABRICKS_SECRET_SCOPE` (default `neo4j-uc-demos`). The
-advanced notebooks read `UC_CONNECTION_NAME` and the catalog from that scope.
+`create_secrets.sh` stores Neo4j credentials plus shared UC, JDBC, and
+lakehouse settings in the scope named by `DATABRICKS_SECRET_SCOPE` (default
+`neo4j-uc-demos`). The advanced notebooks read their connection and catalog
+configuration from that scope.
 
 ### 3. Cluster Requirements
 

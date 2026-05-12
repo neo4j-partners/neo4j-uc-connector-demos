@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Neo4j + Databricks Lakehouse Federation Integration — enables SQL queries against Neo4j graph databases from Databricks via Unity Catalog's JDBC connection support. The core component is the Neo4j JDBC Lakehouse Federation Connector, a shaded (fat) JAR that bundles the Neo4j JDBC driver with SQL-to-Cypher translators.
+Neo4j + Databricks Lakehouse Federation Integration enables SQL queries against Neo4j graph databases from Databricks via Unity Catalog's JDBC connection support. The core component is the Neo4j JDBC Lakehouse Federation Connector, a shaded (fat) JAR that bundles the Neo4j JDBC driver with SQL-to-Cypher translators.
 
 ## Connector JAR
 
@@ -16,14 +16,14 @@ The Neo4j JDBC Lakehouse Federation Connector JAR is built and released from a s
 
 Translators are discovered via Java ServiceLoader (`META-INF/services/org.neo4j.jdbc.translator.spi.TranslatorFactory`). The pipeline chains translators by `Translator.getOrder()`:
 
-1. **SparkSubqueryCleaningTranslator** (highest precedence) — strips Spark's `SPARK_GEN_SUBQ_0 WHERE 1=0` wrapping that Databricks adds to JDBC queries
-2. **SqlToCypherTranslator** — converts cleaned SQL into Cypher
+1. **SparkSubqueryCleaningTranslator** (highest precedence) strips Spark's `SPARK_GEN_SUBQ_0 WHERE 1=0` wrapping that Databricks adds to JDBC queries
+2. **SqlToCypherTranslator** converts cleaned SQL into Cypher
 
 Each translator returns `null` for queries it doesn't handle, passing to the next in the chain.
 
 ### Shaded JAR Strategy
 
-The Maven shade plugin merges `neo4j-jdbc`, `neo4j-jdbc-translator-impl`, and `neo4j-jdbc-translator-sparkcleaner` into a single JAR. All dependencies are relocated under `org.neo4j.jdbc.internal.shaded.*` to avoid classpath conflicts with Databricks SafeSpark's isolated JVM. The `ServicesResourceTransformer` merges SPI registration files across the bundled JARs — this is critical for translator discovery.
+The Maven shade plugin merges `neo4j-jdbc`, `neo4j-jdbc-translator-impl`, and `neo4j-jdbc-translator-sparkcleaner` into a single JAR. All dependencies are relocated under `org.neo4j.jdbc.internal.shaded.*` to avoid classpath conflicts with Databricks SafeSpark's isolated JVM. The `ServicesResourceTransformer` merges SPI registration files across the bundled JARs, which is critical for translator discovery.
 
 ### SafeSpark Compatibility
 
@@ -32,13 +32,13 @@ Databricks runs custom JDBC drivers in an isolated JVM sandbox. The connector re
 
 ### Project Layout
 
-- `getting-started/` — Tutorial: 4 ordered Databricks notebooks (load graph → connect → federate → materialize)
-- `advanced-patterns/` — In-depth notebooks: metadata sync (Delta + External API), advanced federated queries, performance diagnostics
-- `validation/` — Programmatic Python scripts run as Databricks jobs (data load, connection validation, federated queries, metadata sync, advanced Spark patterns)
-- `driver-tests/` — Local Java/Maven tests for Neo4j JDBC SQL-to-Cypher translation (no Databricks required)
-- `docs/` — Markdown reference documentation
-- `site/` — Antora documentation site (AsciiDoc, published to GitHub Pages)
-- `.archive/` — Internal scratch and superseded notes (gitignored)
+- `getting-started/`: Tutorial: 4 ordered Databricks notebooks (load graph → connect → federate → materialize)
+- `advanced-patterns/`: In-depth notebooks: metadata sync (Delta + External API), advanced federated queries, performance diagnostics
+- `validation/`: Programmatic Python scripts run as Databricks jobs (data load, connection validation, federated queries, metadata sync, advanced Spark patterns)
+- `driver-tests/`: Local Java/Maven tests for Neo4j JDBC SQL-to-Cypher translation (no Databricks required)
+- `docs/`: Markdown reference documentation
+- `site/`: Antora documentation site (AsciiDoc, published to GitHub Pages)
+- `.archive/`: Internal scratch and superseded notes (gitignored)
 
 The connector JAR itself lives in a separate repo:
 [neo4j-unity-catalog-connector](https://github.com/neo4j-labs/neo4j-unity-catalog-connector).
@@ -67,4 +67,4 @@ Supported: `SELECT COUNT(*)`, aggregates with `WHERE`, `COUNT DISTINCT`, `NATURA
 
 Not supported (use Spark Connector instead): relationship property aggregation, user-authored derived-table subqueries (`SELECT * FROM (...) alias`).
 
-Note: Spark's `SPARK_GEN_SUBQ_N` probe wrappers are stripped automatically by the spark cleaner JAR before translation. This is internal plumbing — it is not the same as support for user-authored subqueries.
+Note: Spark's `SPARK_GEN_SUBQ_N` probe wrappers are stripped automatically by the spark cleaner JAR before translation. This is internal plumbing; it is not the same as support for user-authored subqueries.

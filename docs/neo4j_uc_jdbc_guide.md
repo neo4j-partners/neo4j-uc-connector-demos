@@ -27,11 +27,11 @@ Download the latest release from [neo4j-unity-catalog-connector releases](https:
 
 | JAR | Purpose |
 |-----|---------|
-| `neo4j-unity-catalog-connector-<version>.jar` | Neo4j JDBC Lakehouse Federation Connector — bundles the JDBC driver, SQL-to-Cypher translator, and Spark subquery cleaner |
+| `neo4j-unity-catalog-connector-<version>.jar` | Neo4j JDBC Lakehouse Federation Connector. Bundles the JDBC driver, SQL-to-Cypher translator, and Spark subquery cleaner |
 
 See the [neo4j-unity-catalog-connector](https://github.com/neo4j-labs/neo4j-unity-catalog-connector) repo for details on what the JAR contains and how it is built.
 
-**Important:** The `java_dependencies` option in `CREATE CONNECTION TYPE JDBC` only supports Unity Catalog Volume paths (e.g., `/Volumes/catalog/schema/jars/`). Cluster-installed libraries (Maven coordinates, uploaded JARs) cannot be referenced here — they are a separate system. JARs must be uploaded to a UC Volume and referenced by their Volume path.
+**Important:** The `java_dependencies` option in `CREATE CONNECTION TYPE JDBC` only supports Unity Catalog Volume paths (e.g., `/Volumes/catalog/schema/jars/`). Cluster-installed libraries (Maven coordinates, uploaded JARs) cannot be referenced here; they are a separate system. JARs must be uploaded to a UC Volume and referenced by their Volume path.
 
 Example path: `/Volumes/catalog/schema/jars/`
 
@@ -45,7 +45,7 @@ For comprehensive testing, install these libraries on your cluster:
 | neo4j (Python) | 6.0.2 | Neo4j Python Driver |
 | neo4j-jdbc-full-bundle | 6.10.5 | JDBC driver (cluster library for Direct JDBC) |
 
-For UC JDBC connections, cluster libraries are **not used**. The `java_dependencies` option only accepts UC Volume paths — cluster-installed libraries (Maven coordinates or uploaded JARs) cannot be referenced in `CREATE CONNECTION`. The JDBC JARs must be stored in a UC Volume.
+For UC JDBC connections, cluster libraries are **not used**. The `java_dependencies` option only accepts UC Volume paths. Cluster-installed libraries (Maven coordinates or uploaded JARs) cannot be referenced in `CREATE CONNECTION`. The JDBC JARs must be stored in a UC Volume.
 
 ---
 
@@ -216,17 +216,17 @@ This translates to Cypher: `MATCH (f:Flight)-[:DEPARTS_FROM]->(a:Airport) RETURN
 
 The SQL-to-Cypher translator now supports GROUP BY, HAVING, ORDER BY, LIMIT/OFFSET, DISTINCT, and their full combinations. These patterns previously failed through UC JDBC but are now fully translated to Cypher:
 
-- **GROUP BY** — implicit grouping (columns match SELECT) and explicit WITH-clause generation (columns differ from SELECT)
-- **HAVING** — simple conditions, compound conditions (AND/OR), mixed SELECT/HAVING aggregates, HAVING without GROUP BY (implicit single-group), HAVING on non-aggregate GROUP BY columns
-- **ORDER BY on aggregate aliases** — `ORDER BY cnt` where `cnt` aliases `count(*)`, with correct alias resolution after WITH clauses
-- **DISTINCT with GROUP BY/HAVING** — correct `RETURN DISTINCT` placement
-- **LIMIT and OFFSET with WITH clauses** — correct attachment to the final RETURN
-- **WHERE + GROUP BY combinations** — WHERE filters before aggregation, HAVING filters after
-- **JOIN + GROUP BY** — aggregation across relationships, with and without WITH clauses
-- **COUNT(DISTINCT) in HAVING** — the DISTINCT flag is preserved through the entire pipeline
-- **Compound HAVING with multiple aggregates** — each HAVING-only aggregate gets a hidden WITH column; aggregates already in SELECT are deduplicated
-- **Additional aggregate functions** — `percentileCont`, `percentileDisc`, `stDev` (stddev_samp), `stDevP` (stddev_pop)
-- **Full clause combinations** — all of the above working together: WHERE + GROUP BY + HAVING + DISTINCT + ORDER BY + LIMIT + OFFSET
+- **GROUP BY**: implicit grouping (columns match SELECT) and explicit WITH-clause generation (columns differ from SELECT)
+- **HAVING**: simple conditions, compound conditions (AND/OR), mixed SELECT/HAVING aggregates, HAVING without GROUP BY (implicit single-group), HAVING on non-aggregate GROUP BY columns
+- **ORDER BY on aggregate aliases**: `ORDER BY cnt` where `cnt` aliases `count(*)`, with correct alias resolution after WITH clauses
+- **DISTINCT with GROUP BY/HAVING**: correct `RETURN DISTINCT` placement
+- **LIMIT and OFFSET with WITH clauses**: correct attachment to the final RETURN
+- **WHERE + GROUP BY combinations**: WHERE filters before aggregation, HAVING filters after
+- **JOIN + GROUP BY**: aggregation across relationships, with and without WITH clauses
+- **COUNT(DISTINCT) in HAVING**: the DISTINCT flag is preserved through the entire pipeline
+- **Compound HAVING with multiple aggregates**: each HAVING-only aggregate gets a hidden WITH column; aggregates already in SELECT are deduplicated
+- **Additional aggregate functions**: `percentileCont`, `percentileDisc`, `stDev` (stddev_samp), `stDevP` (stddev_pop)
+- **Full clause combinations**: all of the above working together: WHERE + GROUP BY + HAVING + DISTINCT + ORDER BY + LIMIT + OFFSET
 
 > **Note:** All aggregation support applies to node properties only; aggregating over relationship properties remains Cypher-only.
 

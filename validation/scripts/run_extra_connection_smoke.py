@@ -93,7 +93,7 @@ def main() -> None:
     # ============================================================================
     print("\n--- Direct JDBC ---")
 
-    # 4a: dbtable — read Aircraft label
+    # 4a: dbtable, read Aircraft label
     AIRCRAFT_SCHEMA = "`v$id` STRING, aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, operator STRING, manufacturer STRING"
     try:
         t0 = time.time()
@@ -111,7 +111,7 @@ def main() -> None:
     except RUNTIME_ERRORS as e:
         vr.record("Direct JDBC dbtable (Aircraft)", False, str(e)[:120])
 
-    # 4b: SQL translation — SELECT 1
+    # 4b: SQL translation, SELECT 1
     try:
         t0 = time.time()
         df = spark.read.format("jdbc") \
@@ -128,7 +128,7 @@ def main() -> None:
     except RUNTIME_ERRORS as e:
         vr.record("Direct JDBC SQL translation", False, str(e)[:120])
 
-    # 4c: SQL aggregate — COUNT(*)
+    # 4c: SQL aggregate, COUNT(*)
     try:
         t0 = time.time()
         df = spark.read.format("jdbc") \
@@ -145,7 +145,7 @@ def main() -> None:
     except RUNTIME_ERRORS as e:
         vr.record("Direct JDBC COUNT aggregate", False, str(e)[:120])
 
-    # 4d: SQL JOIN — NATURAL JOIN (graph traversal)
+    # 4d: SQL JOIN, NATURAL JOIN (graph traversal)
     try:
         t0 = time.time()
         df = spark.read.format("jdbc") \
@@ -204,7 +204,7 @@ def main() -> None:
     # ============================================================================
     print("\n--- UC JDBC Queries ---")
 
-    # 6a: Basic query — SELECT 1
+    # 6a: Basic query, SELECT 1
     try:
         t0 = time.time()
         df = read_neo4j_jdbc(spark, cfg, "test INT", query="SELECT 1 AS test")
@@ -214,7 +214,7 @@ def main() -> None:
     except RUNTIME_ERRORS as e:
         vr.record("UC JDBC basic query", False, str(e)[:120])
 
-    # 6b: remote_query() — SELECT 1
+    # 6b: remote_query(), SELECT 1
     try:
         t0 = time.time()
         df = spark.sql(f"""

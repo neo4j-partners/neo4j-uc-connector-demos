@@ -127,7 +127,7 @@ AIRCRAFT (A321neo)
 
 #### 2.1.1 Engine Systems (LEAP-1A)
 
-The A321neo is powered by two CFM International LEAP-1A high-bypass turbofan engines, representing the most significant advancement in narrow-body propulsion in decades. Each engine produces up to 32,900 lbf of thrust and delivers 15% better fuel efficiency than previous generation engines. The LEAP-1A features revolutionary 3D woven carbon fiber composite fan blades—a first for commercial aviation—reducing weight while improving durability and foreign object damage resistance. The engine incorporates a twin-annular, pre-mixing swirler (TAPS II) combustor for reduced NOx emissions, ceramic matrix composite (CMC) shrouds in the high-pressure turbine, and an advanced active clearance control system. Engine health monitoring via the FADEC provides real-time data on exhaust gas temperature (EGT), vibration, fan speed (N1), and fuel flow, with enhanced diagnostic capabilities through the Engine Monitoring Unit (EMU). The engine systems account for approximately 61% of all maintenance events in the fleet, with vibration exceedance and contamination being the most prevalent issues—characteristic of new technology adoption.
+The A321neo is powered by two CFM International LEAP-1A high-bypass turbofan engines, representing the most significant advancement in narrow-body propulsion in decades. Each engine produces up to 32,900 lbf of thrust and delivers 15% better fuel efficiency than previous generation engines. The LEAP-1A features revolutionary 3D woven carbon fiber composite fan blades, a first for commercial aviation, reducing weight while improving durability and foreign object damage resistance. The engine incorporates a twin-annular, pre-mixing swirler (TAPS II) combustor for reduced NOx emissions, ceramic matrix composite (CMC) shrouds in the high-pressure turbine, and an advanced active clearance control system. Engine health monitoring via the FADEC provides real-time data on exhaust gas temperature (EGT), vibration, fan speed (N1), and fuel flow, with enhanced diagnostic capabilities through the Engine Monitoring Unit (EMU). The engine systems account for approximately 61% of all maintenance events in the fleet, with vibration exceedance and contamination being the most prevalent issues, characteristic of new technology adoption.
 
 **ATA Reference:** Chapters 71 (Powerplant), 72 (Engine), 73 (Engine Fuel and Control), 77 (Engine Indicating), 79 (Oil)
 
@@ -237,7 +237,7 @@ The LEAP-1A incorporates several breakthrough technologies:
 **Part Number:** LEAP-FM-1A32-100
 **ATA Reference:** 72-21
 
-The fan module features 18 wide-chord 3D woven carbon fiber composite blades—a revolutionary technology exclusive to LEAP engines. Each blade is manufactured using Resin Transfer Molding (RTM) with a titanium leading edge for erosion protection.
+The fan module features 18 wide-chord 3D woven carbon fiber composite blades, a revolutionary technology exclusive to LEAP engines. Each blade is manufactured using Resin Transfer Molding (RTM) with a titanium leading edge for erosion protection.
 
 **Key Characteristics:**
 - Blade weight: 11.3 kg (vs. 25 kg for titanium)
@@ -357,7 +357,7 @@ The LEAP-1A Full Authority Digital Engine Control provides:
 
 **FADEC Configuration:** Dual-channel with automatic switchover
 **Software:** LEAP-1A Standard 2.3 (or as updated per SB)
-**Manual Reversion:** Not available—FADEC failure requires engine shutdown
+**Manual Reversion:** Not available. FADEC failure requires engine shutdown
 
 ---
 

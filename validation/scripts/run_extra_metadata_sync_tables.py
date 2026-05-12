@@ -189,9 +189,9 @@ def main() -> None:
                   f"{len(relationship_counts)} types")
 
         for label, props in sorted(discovered_labels.items()):
-            print(f"    :{label} — {len(props)} properties")
+            print(f"    :{label}, {len(props)} properties")
         for rel_type, props in sorted(discovered_relationships.items()):
-            print(f"    [:{rel_type}] — {len(props)} properties")
+            print(f"    [:{rel_type}], {len(props)} properties")
         if multi_label_skipped > 0:
             print(f"    (skipped {multi_label_skipped} multi-label entries)")
 
@@ -221,62 +221,64 @@ def main() -> None:
     print("\n--- Getting Started Pattern: UC JDBC Materialized Tables ---")
     getting_started_results = []
 
-    def materialize(table_name, query, custom_schema, expected_rows, select_columns=None):
-        materialize(
+    def materialize_getting_started(
+        table_name, query, custom_schema, expected_rows, select_columns=None
+    ):
+        materialize_jdbc_table(
             spark, cfg, vr, target_catalog, GETTING_STARTED_SCHEMA,
             getting_started_results, table_name, query, custom_schema,
             expected_rows, select_columns=select_columns,
         )
 
-    materialize(
+    materialize_getting_started(
         "neo4j_aircraft",
         "SELECT aircraftId, tail_number, icao24, model, manufacturer, operator FROM Aircraft",
         "aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, manufacturer STRING, operator STRING",
         20,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_airports",
         "SELECT airportId, name, city, country, iata, icao FROM Airport",
         "airportId STRING, name STRING, city STRING, country STRING, iata STRING, icao STRING",
         12,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_systems",
         "SELECT systemId, aircraftId, type, name FROM System",
         "systemId STRING, aircraftId STRING, type STRING, name STRING",
         80,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_sensors",
         "SELECT sensorId, systemId, type, name, unit FROM Sensor",
         "sensorId STRING, systemId STRING, type STRING, name STRING, unit STRING",
         160,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_components",
         "SELECT componentId, systemId, type, name FROM Component",
         "componentId STRING, systemId STRING, type STRING, name STRING",
         320,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_maintenance_events",
         "SELECT eventId, componentId, systemId, aircraftId, fault, severity, reported_at, corrective_action FROM MaintenanceEvent",
         "eventId STRING, componentId STRING, systemId STRING, aircraftId STRING, fault STRING, severity STRING, reported_at STRING, corrective_action STRING",
         300,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_flights",
         "SELECT flightId, flight_number, aircraftId, operator, origin, destination, scheduled_departure, scheduled_arrival FROM Flight",
         "flightId STRING, flight_number STRING, aircraftId STRING, operator STRING, origin STRING, destination STRING, scheduled_departure STRING, scheduled_arrival STRING",
         800,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_delays",
         "SELECT delayId, flightId, cause, CAST(minutes AS STRING) AS minutes FROM Delay",
         "delayId STRING, flightId STRING, cause STRING, minutes STRING",
         514,
     )
-    materialize(
+    materialize_getting_started(
         "neo4j_aircraft_systems",
         """SELECT a.aircraftId AS aircraftId, a.model AS model,
                   s.systemId AS systemId, s.type AS systemType, s.name AS systemName,
