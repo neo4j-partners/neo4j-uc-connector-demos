@@ -39,14 +39,6 @@ Set `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `JDBC_JAR_PATH`,
 `UC_CONNECTION_NAME`, `LAKEHOUSE_SCHEMA`, `DATABRICKS_PROFILE`, and the Neo4j
 credentials.
 
-### Upload Data
-
-CSV files for the aircraft digital twin dataset are in `getting-started/data/aircraft_digital_twin_data/`. Upload them to your UC Volume:
-
-```bash
-./getting-started/upload_data.sh
-```
-
 ### Create Secrets
 
 Notebooks retrieve Neo4j credentials, UC settings, the JDBC JAR path, and the connection name from Databricks secrets rather than hardcoded values. Provision the secret scope from the root `.env`:
@@ -56,6 +48,14 @@ Notebooks retrieve Neo4j credentials, UC settings, the JDBC JAR path, and the co
 ```
 
 This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores the Neo4j credentials plus the shared UC, JDBC, and `LAKEHOUSE_SCHEMA` settings.
+
+### Upload Data
+
+CSV files for the aircraft digital twin dataset are in `getting-started/data/aircraft_digital_twin_data/`. Upload them to your UC Volume:
+
+```bash
+./getting-started/upload_data.sh
+```
 
 ---
 

@@ -36,16 +36,16 @@ Start with the root README and the `getting-started/` notebooks. The site explai
 
 The required SafeSpark settings are documented in xref:uc-integration-setup.adoc[UC Integration Setup] and xref:troubleshooting.adoc[Troubleshooting].
 
-=== Configure, Upload Data, and Create Secrets
+=== Configure, Create Secrets, and Upload Data
 
 [source,bash]
 ----
 cp .env.sample .env
-./getting-started/upload_data.sh
 ./create_secrets.sh
+./getting-started/upload_data.sh
 ----
 
-Set `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`, `JDBC_JAR_PATH`, `UC_CONNECTION_NAME`, `LAKEHOUSE_SCHEMA`, `DATABRICKS_PROFILE`, and the Neo4j credentials in `.env` before running the scripts. The upload script copies the aircraft digital twin CSV files into a UC Volume. The secrets script stores the Neo4j credentials plus shared UC, JDBC, and `LAKEHOUSE_SCHEMA` settings in the Databricks secret scope named by `DATABRICKS_SECRET_SCOPE`.
+Open `.env` and fill in your Unity Catalog target, the JDBC JAR path, the UC connection name, the lakehouse schema, the Databricks profile, and the Neo4j credentials before running either script. The secrets script writes the Neo4j credentials along with the shared Unity Catalog, JDBC, and lakehouse schema settings into the Databricks secret scope. The upload script then copies the aircraft digital twin CSV files into a UC Volume so the notebooks can load them.
 
 == Getting Started Notebooks
 
