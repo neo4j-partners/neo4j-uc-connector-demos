@@ -123,33 +123,44 @@ spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 
 Without these settings, UC JDBC connections to Neo4j will fail with: `Connection was closed before the operation completed`
 
-### Upload CSV Data
+### Configure `.env`
 
-CSV files are in `getting-started/data/aircraft_digital_twin_data/`. Upload them to your UC Volume before running the notebooks:
+Configuration for every script in this repo lives in a single `.env` file at the
+repo root. Copy the sample and fill in `UC_CATALOG`, `UC_SCHEMA`, `UC_VOLUME`,
+`DATABRICKS_PROFILE`, and the Neo4j credentials:
 
 ```bash
-cd validation
-cp .env.sample .env   # fill in UC_CATALOG, UC_SCHEMA, UC_VOLUME, DATABRICKS_PROFILE
-./upload_data.sh
+cp .env.sample .env
+```
+
+### Upload CSV Data
+
+CSV files are in `getting-started/data/aircraft_digital_twin_data/`. Upload them
+to your UC Volume before running the notebooks:
+
+```bash
+./getting-started/upload_data.sh
 ```
 
 This copies all CSV files to `/Volumes/{UC_CATALOG}/{UC_SCHEMA}/{UC_VOLUME}/`.
 
 ### Set Up Databricks Secrets
 
-Notebooks use Databricks secrets for Neo4j credentials rather than hardcoded values. Set up the secret scope from the same `.env` file:
+Notebooks use Databricks secrets for Neo4j credentials rather than hardcoded
+values. Set up the secret scope from the root `.env`:
 
 ```bash
-cd validation
 ./create_secrets.sh
 ```
 
-This creates a secret scope named `validation` (configurable via `DATABRICKS_SECRET_SCOPE` in `.env`) and stores `NEO4J_USERNAME` and `NEO4J_PASSWORD` as secrets.
+This creates a secret scope named `neo4j-uc-demos` (configurable via
+`DATABRICKS_SECRET_SCOPE` in `.env`) and stores `NEO4J_USERNAME` and
+`NEO4J_PASSWORD` as secrets.
 
 The notebooks retrieve credentials at runtime:
 
 ```python
-SECRET_SCOPE = "validation"
+SECRET_SCOPE = "neo4j-uc-demos"
 NEO4J_USERNAME = dbutils.secrets.get(scope=SECRET_SCOPE, key="NEO4J_USERNAME")
 NEO4J_PASSWORD = dbutils.secrets.get(scope=SECRET_SCOPE, key="NEO4J_PASSWORD")
 ```
@@ -158,13 +169,14 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 
 ## Getting Started
 
-1. Upload CSV data: `cd validation && ./upload_data.sh`
-2. Create secrets: `cd validation && ./create_secrets.sh`
-3. Update the configuration cell in each notebook with your `NEO4J_URI`, `UC_CATALOG`, and `JDBC_JAR_PATH`.
-4. Run `00-load-graph.ipynb` to load the aircraft graph into Neo4j.
-5. Run `01-simple-connect-test.ipynb` to create the `sensor_readings` table and UC JDBC connection.
-6. Run `02-federated-queries.ipynb` for live federated queries.
-7. Run `03-materialized-tables.ipynb` to materialize graph data as Delta tables.
+1. Copy and fill in the root config: `cp .env.sample .env`
+2. Upload CSV data: `./getting-started/upload_data.sh`
+3. Create secrets: `./create_secrets.sh`
+4. Update the configuration cell in each notebook with your `NEO4J_URI`, `UC_CATALOG`, and `JDBC_JAR_PATH`.
+5. Run `00-load-graph.ipynb` to load the aircraft graph into Neo4j.
+6. Run `01-neo4j-uc-connection-setup.ipynb` to create the `sensor_readings` table and UC JDBC connection.
+7. Run `02-federated-queries.ipynb` for live federated queries.
+8. Run `03-materialized-tables.ipynb` to materialize graph data as Delta tables.
 
 ## Tradeoffs
 

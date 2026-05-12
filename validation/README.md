@@ -4,8 +4,9 @@ Batch validation scripts for Neo4j Unity Catalog federation on Databricks.
 
 The scripts use `databricks-job-runner==0.4.8` to upload local Python files to a
 Databricks workspace and submit them as one-time jobs. Runtime configuration is
-read from `.env` and passed to each job as task parameters. Neo4j credentials are
-stored in a Databricks secret scope.
+read from the repo-root `../.env` and passed to each job as task parameters.
+Neo4j credentials are stored in a Databricks secret scope, provisioned by the
+repo-root `../create_secrets.sh`.
 
 ## What Runs
 
@@ -53,17 +54,19 @@ suite. The dataset comes from:
 getting-started/data/aircraft_digital_twin_data/
 ```
 
-From this folder, after configuring `.env` (see Quick Start below):
+After configuring the repo-root `../.env` (see Quick Start below):
 
 ```bash
-./upload_data.sh
+# From the repo root:
+./getting-started/upload_data.sh
 ./create_secrets.sh
 
+# From validation/:
 uv run python -m cli upload run_00_load_graph.py
 uv run python -m cli submit run_00_load_graph.py
 ```
 
-`upload_data.sh` copies the CSV files to
+`getting-started/upload_data.sh` copies the CSV files to
 `/Volumes/${UC_CATALOG}/${UC_SCHEMA}/${UC_VOLUME}/`. `run_00_load_graph.py`
 reads them on the cluster and writes the graph into Neo4j. The
 `run_02_federated_queries.py` validation also reads Delta tables named
@@ -73,20 +76,21 @@ the full suite.
 
 ## Quick Start
 
-From this folder:
+From the repo root:
 
 ```bash
 cp .env.sample .env
 ```
 
-Edit `.env` and set:
+Edit the root `.env` and fill in the values listed in `.env.sample`. Important
+keys for the validation suite:
 
 ```text
 DATABRICKS_PROFILE=
 DATABRICKS_COMPUTE_MODE=cluster
 DATABRICKS_CLUSTER_ID=
-DATABRICKS_WORKSPACE_DIR=/Users/<your-email>/validation
-DATABRICKS_SECRET_SCOPE=validation
+DATABRICKS_WORKSPACE_DIR=/Users/<your-email>/neo4j-uc-connector-demos
+DATABRICKS_SECRET_SCOPE=neo4j-uc-demos
 NEO4J_HOST=<instance>.databases.neo4j.io
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=
@@ -107,11 +111,14 @@ METADATA_GRANT_PRINCIPAL=
 `NEO4J_HOST` should be the host only. `NEO4J_URI=neo4j+s://...` is also
 supported.
 
-Create the Databricks secret scope and store the Neo4j credentials:
+Create the Databricks secret scope and store the Neo4j credentials (from the
+repo root):
 
 ```bash
 ./create_secrets.sh
 ```
+
+The rest of the commands below run from this `validation/` folder.
 
 Verify the local CLI resolves `databricks-job-runner`:
 
@@ -178,14 +185,10 @@ The metadata validation has two paths:
   Unity Catalog External Metadata entries through
   `/api/2.0/lineage-tracking/external-metadata`.
 
-External Metadata registration is metadata-only. It does not copy graph data;
-it records labels, relationship types, property names, and encoded Neo4j type
-details so governance and lineage workflows can discover the graph schema.
-
 `run_04_metadata_sync_api.py` requires `CREATE_EXTERNAL_METADATA` on the
-metastore for the workspace principal that submits the job. The reusable helper
-uses the working approach from `grant_magic.md`: submit a one-shot PySpark job
-to the configured workspace cluster and issue the grant with Spark SQL.
+metastore. See [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata)
+for the grant setup, including why the grant must run as a cluster job and how
+`grant_external_metadata.sh` automates it.
 
 ### Quick Start
 
@@ -246,6 +249,6 @@ between remote Neo4j results and Delta lakehouse tables.
 ## Notes
 
 - `NEO4J_USERNAME` and `NEO4J_PASSWORD` are listed in `cli/__init__.py` as secret keys, so they are not passed as plaintext job parameters.
-- Keep `.env` local. Use `.env.sample` for documented defaults.
+- Keep the repo-root `.env` local. Use `../.env.sample` for documented defaults.
 - The wrapper scripts default `UV_CACHE_DIR` to `.uv-cache/` inside this folder. Override `UV_CACHE_DIR` if you want to use a shared cache.
-- `run_04_metadata_sync_api.py` requires `CREATE_EXTERNAL_METADATA` on the metastore. See the Metadata section, `grant_magic.md`, and `grant_external_metadata.sh` for the grant workflow.
+- `run_04_metadata_sync_api.py` requires `CREATE_EXTERNAL_METADATA` on the metastore. See [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata) and `grant_external_metadata.sh` for the grant workflow.

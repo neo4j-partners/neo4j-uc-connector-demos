@@ -33,7 +33,7 @@ Databricks runs custom JDBC drivers in an isolated JVM sandbox. The connector re
 ### Project Layout
 
 - `getting-started/` — Tutorial: 4 ordered Databricks notebooks (load graph → connect → federate → materialize)
-- `examples/` — In-depth notebooks: metadata sync (Delta + External API), advanced federated queries, performance diagnostics
+- `advanced-patterns/` — In-depth notebooks: metadata sync (Delta + External API), advanced federated queries, performance diagnostics
 - `validation/` — Programmatic Python scripts run as Databricks jobs (data load, connection validation, federated queries, metadata sync, advanced Spark patterns)
 - `driver-tests/` — Local Java/Maven tests for Neo4j JDBC SQL-to-Cypher translation (no Databricks required)
 - `docs/` — Markdown reference documentation

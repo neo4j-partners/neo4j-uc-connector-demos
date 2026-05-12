@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Run the metadata-only validation suite from validation/.env.
+# Run the metadata-only validation suite from the repo-root .env.
 #
-# The default path is intentionally end-to-end: load .env, create/update the
-# Databricks secret scope, grant External Metadata registration rights, upload
-# the scripts, then submit both metadata validations.
+# The default path is intentionally end-to-end: load ../.env, create/update the
+# Databricks secret scope (via ../create_secrets.sh), grant External Metadata
+# registration rights, upload the scripts, then submit both metadata
+# validations.
 #
 # Usage:
 #   ./validate_metadata.sh
@@ -16,15 +17,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$SCRIPT_DIR/.uv-cache}"
 
-if [[ ! -f .env ]]; then
-    echo "ERROR: .env not found. Copy .env.sample to .env and fill in values." >&2
+if [[ ! -f ../.env ]]; then
+    echo "ERROR: ../.env not found. Copy ../.env.sample to ../.env and fill in values." >&2
     exit 1
 fi
 
-# Source .env here so the orchestration decisions below use the same values
-# that databricks-job-runner passes to the remote Spark jobs.
+# Source the repo-root .env here so the orchestration decisions below use the
+# same values that databricks-job-runner passes to the remote Spark jobs.
 set -a
-source .env
+source ../.env
 set +a
 
 SKIP_SECRETS=""
@@ -71,14 +72,15 @@ uv sync --locked
 uv run python -m cli --help >/dev/null
 uv run python -m compileall cli scripts tools
 
-for shell_script in create_secrets.sh grant_external_metadata.sh upload.sh submit.sh validate_metadata.sh; do
+for shell_script in grant_external_metadata.sh upload.sh submit.sh validate_metadata.sh; do
     bash -n "$shell_script"
 done
+bash -n ../create_secrets.sh
 echo ""
 
 if [[ -z "$SKIP_SECRETS" ]]; then
     echo "--- Step 2: Creating/updating Databricks secrets from .env ---"
-    ./create_secrets.sh
+    (cd .. && ./create_secrets.sh)
     echo ""
 else
     echo "--- Step 2: Skipping secrets (--skip-secrets) ---"

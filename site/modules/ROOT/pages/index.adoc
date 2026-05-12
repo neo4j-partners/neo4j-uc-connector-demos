@@ -46,8 +46,8 @@ ENVIRONMENT (
 )
 OPTIONS (
   url 'jdbc:neo4j+s://your-host:7687/neo4j?enableSQLTranslation=true',
-  user secret('neo4j-uc-creds', 'user'),
-  password secret('neo4j-uc-creds', 'password'),
+  user secret('neo4j-uc-demos', 'NEO4J_USERNAME'),
+  password secret('neo4j-uc-demos', 'NEO4J_PASSWORD'),
   driver 'org.neo4j.jdbc.Neo4jDriver',
   externalOptionsAllowList 'dbtable,query,customSchema'
 )
@@ -108,7 +108,7 @@ For the complete validated pattern list, SQL translation examples, and test resu
 The https://github.com/neo4j-partners/neo4j-uc-connector-demos/tree/main/getting-started[getting-started notebooks] in the repo walk through the complete setup and query progression:
 
 * https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/00-load-graph.ipynb[00-load-graph.ipynb] -- loads the aircraft digital twin dataset into Neo4j
-* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/01-simple-connect-test.ipynb[01-simple-connect-test.ipynb] -- creates the UC JDBC connection and validates connectivity
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/01-neo4j-uc-connection-setup.ipynb[01-neo4j-uc-connection-setup.ipynb] -- creates the UC JDBC connection and validates connectivity
 * https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/02-federated-queries.ipynb[02-federated-queries.ipynb] -- runs live federated queries combining Neo4j graph topology with Delta sensor data
 * https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/03-materialized-tables.ipynb[03-materialized-tables.ipynb] -- materializes Neo4j node labels as Delta tables for Genie and SQL analytics
 
@@ -182,7 +182,7 @@ Lakebase, Databricks' managed PostgreSQL, is already an official federated data 
 1. Lakehouse tables in Unity Catalog: `aircraft`, `systems`, `sensors`, `sensor_readings`
 2. Neo4j Federated JDBC UC Connection configured (see https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/docs/neo4j_uc_jdbc_guide.md[setup guide])
 3. Neo4j Spark Connector installed as cluster library (for queries 3-5)
-4. `neo4j-uc-creds` secret scope configured
+4. Databricks secret scope configured via the repo-root `./create_secrets.sh` (default name: `neo4j-uc-demos`)
 
 == References
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Upload aircraft digital twin CSV files to a UC Volume.
 #
-# Reads UC_CATALOG, UC_SCHEMA, UC_VOLUME, and DATABRICKS_PROFILE from .env.
-# CSV files are sourced from ../getting-started/data/aircraft_digital_twin_data/.
+# Reads UC_CATALOG, UC_SCHEMA, UC_VOLUME, and DATABRICKS_PROFILE from the
+# repo-root .env. CSV files are sourced from ./data/aircraft_digital_twin_data/.
 #
-# Run this once before submitting run_01 or run_02.
+# Run this once before running notebook 00, or before submitting run_01/run_02
+# from validation/.
 #
 # Usage:
 #   ./upload_data.sh
@@ -12,12 +13,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DATA_DIR="$SCRIPT_DIR/../getting-started/data/aircraft_digital_twin_data"
+DATA_DIR="$SCRIPT_DIR/data/aircraft_digital_twin_data"
 
-# Load .env
+# Load repo-root .env
 set -a
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/.env"
+source "$SCRIPT_DIR/../.env"
 set +a
 
 VOLUME_PATH="/Volumes/${UC_CATALOG}/${UC_SCHEMA}/${UC_VOLUME}"

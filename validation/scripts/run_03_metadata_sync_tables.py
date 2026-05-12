@@ -15,8 +15,15 @@ import re
 import sys
 import time
 from collections import defaultdict
+from functools import reduce
 
-from data_utils import inject_params, get_config, get_neo4j_driver, ValidationResults
+from data_utils import (
+    ValidationResults,
+    get_config,
+    get_neo4j_driver,
+    inject_params,
+    read_neo4j_jdbc,
+)
 
 inject_params()
 cfg = get_config()
@@ -24,8 +31,10 @@ cfg = get_config()
 TARGET_CATALOG = cfg["metadata_catalog"]
 NODES_SCHEMA = cfg["nodes_schema"]
 RELS_SCHEMA = cfg["relationships_schema"]
+GETTING_STARTED_SCHEMA = "getting_started"
 
 from pyspark.sql import SparkSession
+from pyspark.sql.types import StringType
 spark = SparkSession.builder.getOrCreate()
 
 # Set Neo4j credentials at session level (avoids repeating per-query)
@@ -44,6 +53,7 @@ print(f"  Neo4j:    {cfg['neo4j_host']}")
 print(f"  Target:   {TARGET_CATALOG}")
 print(f"  Nodes:    {TARGET_CATALOG}.{NODES_SCHEMA}")
 print(f"  Rels:     {TARGET_CATALOG}.{RELS_SCHEMA}")
+print(f"  Tutorial: {TARGET_CATALOG}.{GETTING_STARTED_SCHEMA}")
 print("")
 
 # ============================================================================
@@ -66,6 +76,8 @@ except Exception as e:
 print("\n--- Discover Schema ---")
 discovered_labels = defaultdict(list)
 discovered_relationships = defaultdict(list)
+relationship_patterns = []
+relationship_counts = {}
 multi_label_skipped = 0
 
 try:
@@ -99,11 +111,33 @@ try:
                 "mandatory": record["mandatory"]
             })
 
+        result = session.run("""
+            MATCH (src)-[r]->(tgt)
+            WITH type(r) AS relType,
+                 labels(src)[0] AS sourceLabel,
+                 labels(tgt)[0] AS targetLabel,
+                 count(r) AS relCount
+            RETURN relType, sourceLabel, targetLabel, relCount
+            ORDER BY relType
+        """)
+        for record in result:
+            rel_type = record["relType"]
+            discovered_relationships.setdefault(rel_type, [])
+            relationship_patterns.append({
+                "type": rel_type,
+                "source": record["sourceLabel"],
+                "target": record["targetLabel"],
+                "count": record["relCount"],
+            })
+            relationship_counts[rel_type] = (
+                relationship_counts.get(rel_type, 0) + record["relCount"]
+            )
+
     driver.close()
     vr.record("Schema discovery: labels", len(discovered_labels) > 0,
               f"{len(discovered_labels)} labels")
-    vr.record("Schema discovery: relationships", len(discovered_relationships) >= 0,
-              f"{len(discovered_relationships)} types")
+    vr.record("Schema discovery: relationships", len(relationship_counts) > 0,
+              f"{len(relationship_counts)} types")
 
     for label, props in sorted(discovered_labels.items()):
         print(f"    :{label} — {len(props)} properties")
@@ -125,7 +159,7 @@ try:
 except Exception as e:
     vr.record(f"Catalog: {TARGET_CATALOG}", False, str(e)[:120])
 
-for schema_name in [NODES_SCHEMA, RELS_SCHEMA]:
+for schema_name in [NODES_SCHEMA, RELS_SCHEMA, GETTING_STARTED_SCHEMA]:
     try:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS `{TARGET_CATALOG}`.`{schema_name}`")
         vr.record(f"Schema: {schema_name}", True)
@@ -133,7 +167,104 @@ for schema_name in [NODES_SCHEMA, RELS_SCHEMA]:
         vr.record(f"Schema: {schema_name}", False, str(e)[:120])
 
 # ============================================================================
-# Section 4: Materialize Node Labels
+# Section 4: Getting Started Materialized Tables Pattern
+# ============================================================================
+print("\n--- Getting Started Pattern: UC JDBC Materialized Tables ---")
+getting_started_results = []
+
+
+def cast_all_to_string(df):
+    """Match the notebook's CHAR(0)-safe Delta write workaround."""
+    for col_name in df.columns:
+        df = df.withColumn(col_name, df[col_name].cast(StringType()))
+    return df
+
+
+def materialize_jdbc_table(table_name, query, custom_schema, expected_rows, select_columns=None):
+    full_tbl = f"`{TARGET_CATALOG}`.`{GETTING_STARTED_SCHEMA}`.`{table_name}`"
+    t0 = time.time()
+    try:
+        df = read_neo4j_jdbc(spark, cfg, custom_schema, query)
+        if select_columns:
+            df = df.select(*select_columns)
+        df = cast_all_to_string(df)
+        df.write.format("delta").mode("overwrite").option(
+            "overwriteSchema", "true"
+        ).saveAsTable(full_tbl)
+        row_count = spark.sql(f"SELECT COUNT(*) AS cnt FROM {full_tbl}").collect()[0]["cnt"]
+        ms = (time.time() - t0) * 1000
+        getting_started_results.append({"table": table_name, "rows": row_count})
+        vr.record(
+            f"Getting Started materialized: {table_name}",
+            row_count == expected_rows,
+            f"{row_count} rows, {ms:.0f}ms",
+        )
+    except Exception as e:
+        vr.record(f"Getting Started materialized: {table_name}", False, str(e)[:160])
+
+
+materialize_jdbc_table(
+    "neo4j_aircraft",
+    "SELECT aircraftId, tail_number, icao24, model, manufacturer, operator FROM Aircraft",
+    "aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, manufacturer STRING, operator STRING",
+    20,
+)
+materialize_jdbc_table(
+    "neo4j_airports",
+    "SELECT airportId, name, city, country, iata, icao FROM Airport",
+    "airportId STRING, name STRING, city STRING, country STRING, iata STRING, icao STRING",
+    12,
+)
+materialize_jdbc_table(
+    "neo4j_systems",
+    "SELECT systemId, aircraftId, type, name FROM System",
+    "systemId STRING, aircraftId STRING, type STRING, name STRING",
+    80,
+)
+materialize_jdbc_table(
+    "neo4j_sensors",
+    "SELECT sensorId, systemId, type, name, unit FROM Sensor",
+    "sensorId STRING, systemId STRING, type STRING, name STRING, unit STRING",
+    160,
+)
+materialize_jdbc_table(
+    "neo4j_components",
+    "SELECT componentId, systemId, type, name FROM Component",
+    "componentId STRING, systemId STRING, type STRING, name STRING",
+    320,
+)
+materialize_jdbc_table(
+    "neo4j_maintenance_events",
+    "SELECT eventId, componentId, systemId, aircraftId, fault, severity, reported_at, corrective_action FROM MaintenanceEvent",
+    "eventId STRING, componentId STRING, systemId STRING, aircraftId STRING, fault STRING, severity STRING, reported_at STRING, corrective_action STRING",
+    300,
+)
+materialize_jdbc_table(
+    "neo4j_flights",
+    "SELECT flightId, flight_number, aircraftId, operator, origin, destination, scheduled_departure, scheduled_arrival FROM Flight",
+    "flightId STRING, flight_number STRING, aircraftId STRING, operator STRING, origin STRING, destination STRING, scheduled_departure STRING, scheduled_arrival STRING",
+    800,
+)
+materialize_jdbc_table(
+    "neo4j_delays",
+    "SELECT delayId, flightId, cause, CAST(minutes AS STRING) AS minutes FROM Delay",
+    "delayId STRING, flightId STRING, cause STRING, minutes STRING",
+    514,
+)
+materialize_jdbc_table(
+    "neo4j_aircraft_systems",
+    """SELECT a.aircraftId AS aircraftId, a.model AS model,
+              s.systemId AS systemId, s.type AS systemType, s.name AS systemName,
+              COUNT(*) AS cnt
+       FROM Aircraft a NATURAL JOIN HAS_SYSTEM rel NATURAL JOIN System s
+       GROUP BY a.aircraftId, a.model, s.systemId, s.type, s.name""",
+    "aircraftId STRING, model STRING, systemId STRING, systemType STRING, systemName STRING, cnt LONG",
+    80,
+    select_columns=["aircraftId", "model", "systemId", "systemType", "systemName"],
+)
+
+# ============================================================================
+# Section 5: Materialize Node Labels
 # ============================================================================
 print(f"\n--- Materialize Node Labels ({len(discovered_labels)}) ---")
 label_results = []
@@ -161,75 +292,102 @@ for label in sorted(discovered_labels.keys()):
         vr.record(f"Label: {label}", False, str(e)[:120])
 
 # ============================================================================
-# Section 5: Materialize Relationship Types
+# Section 6: Materialize Relationship Types
 # ============================================================================
 print(f"\n--- Materialize Relationship Types ---")
 
-# Discover relationship patterns (source → type → target)
-rel_patterns = []
-try:
-    driver = get_neo4j_driver(cfg)
-    with driver.session(database=cfg["neo4j_database"]) as session:
-        result = session.run("""
-            MATCH (src)-[r]->(tgt)
-            WITH type(r) AS relType, labels(src) AS srcLabels, labels(tgt) AS tgtLabels
-            RETURN DISTINCT relType, srcLabels[0] AS sourceLabel, tgtLabels[0] AS targetLabel
-            ORDER BY relType
-        """)
-        for record in result:
-            rel_patterns.append({
-                "type": record["relType"],
-                "source": record["sourceLabel"],
-                "target": record["targetLabel"]
-            })
-    driver.close()
-    print(f"  Found {len(rel_patterns)} relationship patterns")
-except Exception as e:
-    print(f"  [WARN] Could not discover patterns: {str(e)[:120]}")
+vr.record(
+    "Relationship pattern discovery",
+    len(relationship_patterns) > 0,
+    f"{len(relationship_patterns)} patterns",
+)
 
 rel_results = []
+patterns_by_type = defaultdict(list)
+for pattern in relationship_patterns:
+    patterns_by_type[pattern["type"]].append(pattern)
 
-for pattern in rel_patterns:
-    rel_type = pattern["type"]
+for rel_type, patterns in sorted(patterns_by_type.items()):
     tbl_name = rel_type.lower()
     full_tbl = f"`{TARGET_CATALOG}`.`{RELS_SCHEMA}`.`{tbl_name}`"
 
     t0 = time.time()
     try:
-        df = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("relationship", rel_type) \
-            .option("relationship.source.labels", f":{pattern['source']}") \
-            .option("relationship.target.labels", f":{pattern['target']}") \
-            .load()
+        dfs = []
+        for pattern in patterns:
+            df = spark.read.format("org.neo4j.spark.DataSource") \
+                .option("relationship", rel_type) \
+                .option("relationship.source.labels", f":{pattern['source']}") \
+                .option("relationship.target.labels", f":{pattern['target']}") \
+                .load()
+            dfs.append(df)
+
+        df = reduce(
+            lambda left, right: left.unionByName(right, allowMissingColumns=True),
+            dfs,
+        )
 
         col_count = len(df.columns)
         df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(full_tbl)
 
         row_count = spark.sql(f"SELECT COUNT(*) AS cnt FROM {full_tbl}").collect()[0]["cnt"]
         ms = (time.time() - t0) * 1000
+        expected_rows = relationship_counts.get(rel_type)
 
         rel_results.append({"type": rel_type, "rows": row_count, "cols": col_count})
-        vr.record(f"Rel: {rel_type}", row_count > 0,
-                  f"{row_count} rows, {col_count} cols, {ms:.0f}ms")
+        vr.record(f"Rel: {rel_type}", row_count == expected_rows,
+                  f"{row_count}/{expected_rows} rows, {col_count} cols, {ms:.0f}ms")
     except Exception as e:
         vr.record(f"Rel: {rel_type}", False, str(e)[:120])
 
+materialized_rel_types = {r["type"] for r in rel_results}
+missing_rel_types = sorted(set(relationship_counts) - materialized_rel_types)
+vr.record(
+    "Relationship type materialization coverage",
+    not missing_rel_types,
+    "all discovered relationship types"
+    if not missing_rel_types
+    else f"missing: {', '.join(missing_rel_types)}",
+)
+
 # ============================================================================
-# Section 6: Verify via INFORMATION_SCHEMA
+# Section 7: Verify via INFORMATION_SCHEMA
 # ============================================================================
 print("\n--- Verify INFORMATION_SCHEMA ---")
 try:
     tables_df = spark.sql(f"""
         SELECT table_schema, table_name, table_type
         FROM `{TARGET_CATALOG}`.information_schema.tables
-        WHERE table_schema IN ('{NODES_SCHEMA}', '{RELS_SCHEMA}')
+        WHERE table_schema IN ('{NODES_SCHEMA}', '{RELS_SCHEMA}', '{GETTING_STARTED_SCHEMA}')
         ORDER BY table_schema, table_name
     """)
     table_count = tables_df.count()
-    expected = len(label_results) + len(rel_results)
+    rows = tables_df.collect()
+    table_names = {
+        (row["table_schema"], row["table_name"])
+        for row in rows
+    }
+    expected_node_tables = {
+        (NODES_SCHEMA, r["label"].lower())
+        for r in label_results
+    }
+    expected_rel_tables = {
+        (RELS_SCHEMA, rel_type.lower())
+        for rel_type in relationship_counts
+    }
+    expected_getting_started_tables = {
+        (GETTING_STARTED_SCHEMA, r["table"])
+        for r in getting_started_results
+    }
+    expected = (
+        expected_node_tables
+        | expected_rel_tables
+        | expected_getting_started_tables
+    )
+    missing_tables = sorted(expected - table_names)
     tables_df.show(50, truncate=False)
-    vr.record("INFORMATION_SCHEMA tables", table_count >= expected,
-              f"{table_count} tables found")
+    vr.record("INFORMATION_SCHEMA tables", not missing_tables,
+              f"{table_count} tables found" if not missing_tables else f"missing: {missing_tables}")
 except Exception as e:
     vr.record("INFORMATION_SCHEMA tables", False, str(e)[:120])
 

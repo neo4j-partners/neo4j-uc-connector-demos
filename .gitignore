@@ -144,15 +144,15 @@ coverage/
 *~
 
 # Proposals / working docs
-examples/OAUTH_UC.md
-examples/OAUTH_UC_HACK.md
+advanced-patterns/OAUTH_UC.md
+advanced-patterns/OAUTH_UC_HACK.md
 
 # Secrets and credentials
 *-connection.json
 **/credentials.json
 **/service-account*.json
 **/*secret*
-!validation/create_secrets.sh
+!/create_secrets.sh
 **/*.pem
 **/*.key
 **/*.p12

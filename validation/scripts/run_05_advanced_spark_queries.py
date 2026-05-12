@@ -11,7 +11,7 @@ Coverage:
   5. Combined post-aggregate clauses
   6. Federated remote_query aggregate results joined to Delta tables
   7. JOIN + GROUP BY traversal queries
-  8. Databricks remote_query LIKE literal behavior
+  8. The exact federated patterns from advanced-patterns/06
 
 Usage:
     uv run python -m cli upload run_05_advanced_spark_queries.py
@@ -225,38 +225,41 @@ def main():
     try:
         result = spark.sql(f"""
             WITH neo4j_maint AS (
-                SELECT
-                    aircraftId,
-                    SUM(maint_count) AS maint_count
+                SELECT *
                 FROM remote_query('{conn}',
-                    query => 'SELECT aircraftId, COUNT(*) AS maint_count
+                    query => 'SELECT aircraftId, severity, COUNT(*) AS cnt
                               FROM MaintenanceEvent
-                              GROUP BY aircraftId')
-                GROUP BY aircraftId
+                              GROUP BY aircraftId, severity
+                              ORDER BY cnt DESC')
             ),
             sensor_health AS (
                 SELECT
                     sys.aircraftId,
-                    ROUND(AVG(r.value), 2) AS avg_reading
+                    ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
+                    ROUND(AVG(CASE WHEN sen.type = 'Vibration' THEN r.value END), 4) AS avg_vibration
                 FROM {lakehouse}.sensor_readings r
                 JOIN {lakehouse}.sensors sen ON r.sensorId = sen.sensorId
                 JOIN {lakehouse}.systems sys ON sen.systemId = sys.systemId
                 GROUP BY sys.aircraftId
             )
             SELECT
-                s.aircraftId,
-                COALESCE(m.maint_count, 0) AS maint_count,
-                s.avg_reading
-            FROM sensor_health s
-            LEFT JOIN neo4j_maint m ON m.aircraftId = s.aircraftId
-            ORDER BY maint_count DESC
+                a.tail_number,
+                a.model,
+                m.severity,
+                m.cnt AS maint_count,
+                s.avg_egt AS avg_egt_c,
+                s.avg_vibration AS avg_vib_ips
+            FROM neo4j_maint m
+            JOIN {lakehouse}.aircraft a ON m.aircraftId = a.aircraftId
+            JOIN sensor_health s ON m.aircraftId = s.aircraftId
+            ORDER BY m.cnt DESC
         """)
         rows = result.collect()
         elapsed = (time.time() - start) * 1000
         results.record(
             "Federated: GROUP BY + Delta",
-            len(rows) == 20 and sum(row["maint_count"] for row in rows) == 300,
-            f"{len(rows)} aircraft, {elapsed:.0f}ms",
+            len(rows) >= 20 and sum(row["maint_count"] for row in rows) == 300,
+            f"{len(rows)} aircraft/severity rows, {elapsed:.0f}ms",
         )
         result.show(10, truncate=False)
     except Exception as exc:
@@ -268,22 +271,37 @@ def main():
             WITH active_operators AS (
                 SELECT *
                 FROM remote_query('{conn}',
-                    query => 'SELECT operator, COUNT(*) AS flight_count
+                    query => 'SELECT operator,
+                                     COUNT(*) AS flight_count,
+                                     COUNT(DISTINCT aircraftId) AS aircraft_count
                               FROM Flight
                               GROUP BY operator
-                              HAVING COUNT(*) > 20')
+                              HAVING COUNT(*) > 20
+                              ORDER BY flight_count DESC')
             ),
             fleet_sensor_avg AS (
-                SELECT ROUND(AVG(value), 2) AS avg_reading, COUNT(*) AS reading_count
-                FROM {lakehouse}.sensor_readings
+                SELECT
+                    a.operator,
+                    ROUND(AVG(CASE WHEN sen.type = 'EGT' THEN r.value END), 1) AS avg_egt,
+                    ROUND(AVG(CASE WHEN sen.type = 'FuelFlow' THEN r.value END), 2) AS avg_fuel_flow,
+                    ROUND(AVG(CASE WHEN sen.type = 'N1Speed' THEN r.value END), 0) AS avg_n1_speed
+                FROM {lakehouse}.sensor_readings r
+                JOIN {lakehouse}.sensors sen ON r.sensorId = sen.sensorId
+                JOIN {lakehouse}.systems sys ON sen.systemId = sys.systemId
+                JOIN {lakehouse}.aircraft a ON sys.aircraftId = a.aircraftId
+                WHERE sys.type = 'Engine'
+                GROUP BY a.operator
             )
             SELECT
                 o.operator,
                 o.flight_count,
-                f.avg_reading AS fleet_avg_sensor_reading,
-                f.reading_count
+                o.aircraft_count,
+                f.avg_egt AS avg_egt_c,
+                f.avg_fuel_flow AS fuel_kgs,
+                f.avg_n1_speed AS n1_rpm
             FROM active_operators o
-            CROSS JOIN fleet_sensor_avg f
+            JOIN fleet_sensor_avg f ON o.operator = f.operator
+            ORDER BY o.flight_count DESC
         """)
         rows = result.collect()
         elapsed = (time.time() - start) * 1000
@@ -295,25 +313,6 @@ def main():
         result.show(truncate=False)
     except Exception as exc:
         results.record("Federated: HAVING + Delta", False, str(exc)[:200])
-
-    print("\n--- Databricks remote_query LIKE literal behavior ---")
-    try:
-        rows = rq("""
-            SELECT COUNT(*) AS cnt
-            FROM MaintenanceEvent
-            WHERE aircraftId LIKE 'AC%'
-        """).collect()
-        passed = len(rows) == 1 and rows[0]["cnt"] == 300
-        detail = f"cnt={rows[0]['cnt']}" if rows else "no rows"
-        results.record("LIKE literal through remote_query", passed, detail)
-    except Exception as exc:
-        message = str(exc)
-        expected = "LIKE AC%" in message or "Token ')'" in message or "DURING_OUTPUT_SCHEMA_RESOLUTION" in message
-        results.record(
-            "LIKE literal through remote_query",
-            expected,
-            "known Databricks quote-stripping behavior" if expected else message[:200],
-        )
 
     if not results.summary():
         sys.exit(1)

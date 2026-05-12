@@ -334,9 +334,12 @@ try:
     node_count = len([i for i in neo4j_items if i["entity_type"] == "NodeLabel"])
     rel_count = len([i for i in neo4j_items if i["entity_type"] == "RelationshipType"])
 
-    vr.record("Verify: list external metadata",
+    vr.record("Verify: list external label metadata",
               node_count >= len(discovered_labels),
-              f"{node_count} labels, {rel_count} rels")
+              f"{node_count}/{len(discovered_labels)} labels")
+    vr.record("Verify: list external relationship metadata",
+              rel_count >= len(discovered_relationships),
+              f"{rel_count}/{len(discovered_relationships)} rels")
 except Exception as e:
     vr.record("Verify: list external metadata", False, str(e)[:120])
 

@@ -62,11 +62,13 @@ if [[ -d tools ]]; then
 fi
 uv run python -m compileall "${PYTHON_CHECK_DIRS[@]}"
 
-for shell_script in upload.sh submit.sh validate.sh validate_metadata.sh create_secrets.sh grant_external_metadata.sh upload_data.sh; do
+for shell_script in upload.sh submit.sh validate.sh validate_metadata.sh grant_external_metadata.sh; do
     if [[ -f "$shell_script" ]]; then
         bash -n "$shell_script"
     fi
 done
+bash -n ../create_secrets.sh
+bash -n ../getting-started/upload_data.sh
 echo ""
 
 SCRIPTS=(

@@ -33,7 +33,8 @@ def neo4j_uri(values: dict[str, str]) -> str:
 
 
 def main() -> int:
-    env_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".env")
+    default_env = Path(__file__).resolve().parents[2] / ".env"
+    env_path = Path(sys.argv[1]) if len(sys.argv) > 1 else default_env
     if not env_path.exists():
         print(f"ERROR: {env_path} not found", file=sys.stderr)
         return 1

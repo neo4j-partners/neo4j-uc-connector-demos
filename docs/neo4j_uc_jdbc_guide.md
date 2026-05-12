@@ -438,6 +438,6 @@ spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 
 | File | Description |
 |------|-------------|
-| `getting-started/01-simple-connect-test.ipynb` | Create the UC JDBC connection and run basic SQL queries |
+| `getting-started/01-neo4j-uc-connection-setup.ipynb` | Create the UC JDBC connection and run basic SQL queries |
 | `getting-started/02-federated-queries.ipynb` | Federated queries joining Neo4j graph topology with Delta |
 | `getting-started/03-materialized-tables.ipynb` | Materialize Neo4j node labels as managed Delta tables |

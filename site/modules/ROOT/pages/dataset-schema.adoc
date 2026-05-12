@@ -113,7 +113,7 @@ Sensor time-series data is not stored in Neo4j. It lives as a Delta table in the
 
 |===
 
-Expected row count: 172,800 (160 sensors × 1,080 readings each). Notebook `01-simple-connect-test.ipynb` loads this table from `nodes_readings.csv` with `read_files()`, normalizes the raw CSV headers to camelCase, and writes it directly into Delta. It does not pass through Neo4j.
+Expected row count: 172,800 (160 sensors × 1,080 readings each). Notebook `01-neo4j-uc-connection-setup.ipynb` loads this table from `nodes_readings.csv` with `read_files()`, normalizes the raw CSV headers to camelCase, and writes it directly into Delta. It does not pass through Neo4j.
 
 == Indexes
 
@@ -135,7 +135,7 @@ These indexes support the `MATCH` lookups in the relationship loading queries, w
 
 == CSV File Inventory
 
-The dataset ships as 17 CSV files uploaded to a UC Volume by `upload_data.sh`. Node files follow Neo4j import format: the primary key column header is `:ID(Label)`, relationship source is `:START_ID(Label)`, and target is `:END_ID(Label)`. The `data_utils.csv_rows()` function normalizes these headers to `id`, `start_id`, and `end_id` before passing rows to Cypher.
+The dataset ships as 17 CSV files uploaded to a UC Volume by `getting-started/upload_data.sh`. Node files follow Neo4j import format: the primary key column header is `:ID(Label)`, relationship source is `:START_ID(Label)`, and target is `:END_ID(Label)`. The `data_utils.csv_rows()` function normalizes these headers to `id`, `start_id`, and `end_id` before passing rows to Cypher.
 
 [cols="2,3"]
 |===

@@ -217,6 +217,44 @@ Catalog: neo4j_catalog    →    Neo4j database
 
 ---
 
+## Prerequisites: Granting CREATE_EXTERNAL_METADATA
+
+Approach 2 (External Metadata API) requires the `CREATE_EXTERNAL_METADATA` privilege on the metastore. Without it, every registration call to `/api/2.0/lineage-tracking/external-metadata` fails with:
+
+```
+PERMISSION_DENIED: User does not have CREATE EXTERNAL METADATA on Metastore
+```
+
+### Why the grant requires a cluster job
+
+`CREATE_EXTERNAL_METADATA` is a metastore-level grant, but it must be issued via SQL on a workspace host. The account-level host (`accounts.azuredatabricks.net`) does not serve the Unity Catalog permissions endpoint needed for this grant. The reliable path is a one-shot PySpark job on an all-purpose cluster, which runs with the submitting user's workspace identity:
+
+```python
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.getOrCreate()
+spark.sql("GRANT CREATE_EXTERNAL_METADATA ON METASTORE TO `user@example.com`")
+```
+
+This works when the submitting user is a metastore admin or holds sufficient inherited privileges.
+
+### Using grant_external_metadata.sh
+
+`validation/grant_external_metadata.sh` automates this. It discovers the current workspace user, uploads a one-shot PySpark task, and submits it to the configured cluster:
+
+```bash
+# Grant to the current workspace user (reads DATABRICKS_CLUSTER_ID from .env)
+./grant_external_metadata.sh
+
+# Grant to a specific principal
+./grant_external_metadata.sh other.user@example.com
+```
+
+The script reads `DATABRICKS_PROFILE`, `DATABRICKS_CLUSTER_ID`, and `DATABRICKS_WORKSPACE_DIR` from the repo-root `.env`. `DATABRICKS_CLUSTER_ID` must point to an all-purpose cluster — serverless is not supported for the grant job.
+
+`validate_metadata.sh` calls the grant step automatically unless `--skip-grant` is passed.
+
+---
+
 ## Implementation Approaches
 
 There are three approaches to register Neo4j metadata in Unity Catalog, each with different tradeoffs.
@@ -322,20 +360,18 @@ Register Neo4j objects as external metadata entries, designed for systems outsid
 
 ### Approach 3: Materialized Delta Tables (Data Copy)
 
-Use the Neo4j Spark Connector to read data and write it as managed Delta tables in UC. Metadata is registered automatically.
+Read data through the UC JDBC connection and write it as managed Delta tables in UC. Metadata is registered automatically when `saveAsTable()` runs.
 
 ```python
-# Read from Neo4j
-df = spark.read.format("org.neo4j.spark.DataSource") \
-    .option("url", "neo4j+s://your-host") \
-    .option("authentication.type", "basic") \
-    .option("authentication.basic.username", user) \
-    .option("authentication.basic.password", password) \
-    .option("labels", ":Aircraft") \
-    .load()
+# Read from Neo4j through the UC JDBC connection
+df = (spark.read.format("jdbc")
+      .option("databricks.connection", "sample_neo4j_jdbc_connection")
+      .option("customSchema", "aircraftId STRING, model STRING, manufacturer STRING")
+      .option("query", "SELECT aircraftId, model, manufacturer FROM Aircraft")
+      .load())
 
-# Write to UC as a managed Delta table
-df.write.mode("overwrite").saveAsTable("neo4j_catalog.nodes.aircraft")
+# Write to UC as a managed Delta table — schema is registered automatically
+df.write.format("delta").mode("overwrite").saveAsTable("neo4j_catalog.nodes.aircraft")
 ```
 
 **Pros:**
@@ -343,12 +379,13 @@ df.write.mode("overwrite").saveAsTable("neo4j_catalog.nodes.aircraft")
 - Data is queryable via standard SQL (`SELECT * FROM neo4j_catalog.nodes.aircraft`)
 - Delta features (time travel, ACID transactions, optimization) apply
 - No custom sync code for metadata — schema is inferred from the DataFrame
+- Uses the same UC JDBC connection as federation, so no Spark Connector or single-user cluster is required
 
 **Cons:**
 - Copies data — not a live view of Neo4j
 - Requires scheduled refresh jobs to keep data current
 - Storage cost for duplicated data
-- Requires `Single user` access mode clusters (Neo4j Spark Connector limitation)
+- `customSchema` is needed per query to avoid `NullType` inference on JDBC reads
 - Loses graph structure — traversals require SQL JOINs
 
 ---
@@ -538,12 +575,12 @@ GET /api/2.0/lineage-tracking/external-metadata
 
 ## Related Notebooks
 
-Two notebooks in `examples/` implement the approaches described above:
+Two notebooks in `advanced-patterns/` implement the approaches described above:
 
 | Notebook | Implements | What It Does |
 |----------|-----------|--------------|
-| [`04_metadata_sync_delta_tables.ipynb`](../examples/04_metadata_sync_delta_tables.ipynb) | Approach 3 (Materialized Delta Tables) | Discovers Neo4j labels and relationship types via `db.schema.nodeTypeProperties()` and `db.schema.relTypeProperties()`, reads each via the Spark Connector, writes as managed Delta tables (`neo4j_metadata.nodes.*` and `neo4j_metadata.relationships.*`), and verifies metadata in `INFORMATION_SCHEMA`. Requires a single-user access mode cluster with the Neo4j Spark Connector. |
-| [`05_metadata_sync_external_api.ipynb`](../examples/05_metadata_sync_external_api.ipynb) | Approach 2 (External Metadata API) | Discovers the same Neo4j schema, then registers each node label and relationship type via the [External Metadata REST API](https://docs.databricks.com/api/workspace/externalmetadata). No data is copied — metadata-only registration for discoverability and lineage. Encodes Neo4j property types in the metadata properties map. Includes optional cleanup to delete registered objects. |
+| [`getting-started/03-materialized-tables.ipynb`](../getting-started/03-materialized-tables.ipynb) | Approach 3 (Materialized Delta Tables) | Reads each Neo4j node label through the UC JDBC connection and writes it as a managed Delta table, then queries `INFORMATION_SCHEMA` to confirm UC has registered the schema automatically. Uses the same JDBC path as federation, so no Spark Connector or single-user cluster is required. |
+| [`05_metadata_sync_external_api.ipynb`](../advanced-patterns/05_metadata_sync_external_api.ipynb) | Approach 2 (External Metadata API) | Discovers the Neo4j schema, then registers each node label and relationship type via the [External Metadata REST API](https://docs.databricks.com/api/workspace/externalmetadata). No data is copied — metadata-only registration for discoverability and lineage. Encodes Neo4j property types in the metadata properties map. Includes optional cleanup to delete registered objects. |
 
 ---
 

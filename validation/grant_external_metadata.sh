@@ -7,7 +7,7 @@
 # workspace host; accounts.azuredatabricks.net does not expose that endpoint for
 # this workflow. A cluster job runs with the submitting user's workspace
 # identity, which is the path that successfully issued the grant in
-# grant_magic.md.
+# docs/metadata_synchronization.md.
 #
 # Usage:
 #   ./grant_external_metadata.sh                    # grant to current user
@@ -18,9 +18,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Load .env for the workspace profile, cluster ID, and upload directory.
+# Load the repo-root .env for the workspace profile, cluster ID, and upload directory.
 set -a
-source "$SCRIPT_DIR/.env"
+source "$SCRIPT_DIR/../.env"
 set +a
 
 PROFILE_FLAG=()
@@ -29,12 +29,12 @@ if [[ -n "${DATABRICKS_PROFILE:-}" ]]; then
 fi
 
 if [[ -z "${DATABRICKS_CLUSTER_ID:-}" ]]; then
-    echo "ERROR: DATABRICKS_CLUSTER_ID must be set in .env for the grant job." >&2
+    echo "ERROR: DATABRICKS_CLUSTER_ID must be set in ../.env for the grant job." >&2
     exit 1
 fi
 
 if [[ -z "${DATABRICKS_WORKSPACE_DIR:-}" ]]; then
-    echo "ERROR: DATABRICKS_WORKSPACE_DIR must be set in .env." >&2
+    echo "ERROR: DATABRICKS_WORKSPACE_DIR must be set in ../.env." >&2
     exit 1
 fi
 

@@ -19,11 +19,11 @@ spark.databricks.safespark.jdbcSandbox.size.default.mib 512
 
 == Setup Automation
 
-The `validation/` directory includes scripts that automate the prerequisite steps. Run these once before creating the connection.
+The repo root contains scripts that automate the prerequisite steps. Run these once before creating the connection.
 
 === 1. Configure .env
 
-Copy `.env.sample` to `.env` and fill in the values:
+Copy the repo-root `.env.sample` to `.env` and fill in the values:
 
 [source,bash]
 ----
@@ -41,7 +41,7 @@ cp .env.sample .env
 |Cluster ID to run scripts on (must have SafeSpark memory settings applied)
 
 |`DATABRICKS_WORKSPACE_DIR`
-|Workspace path where scripts are uploaded (e.g. `/Users/you@example.com/validation`)
+|Workspace path where scripts are uploaded (e.g. `/Users/you@example.com/neo4j-uc-connector-demos`)
 
 |`NEO4J_URI`
 |Neo4j Aura connection URI (e.g. `neo4j+s://abc123.databases.neo4j.io`)
@@ -53,7 +53,7 @@ cp .env.sample .env
 |Neo4j password
 
 |`DATABRICKS_SECRET_SCOPE`
-|Name of the Databricks secret scope to create (e.g. `validation`)
+|Name of the Databricks secret scope to create (e.g. `neo4j-uc-demos`)
 
 |`UC_CATALOG`
 |Unity Catalog catalog name
@@ -94,16 +94,16 @@ After running this, the Neo4j credentials are available in Databricks scripts vi
 ----
 from databricks.sdk import WorkspaceClient
 ws = WorkspaceClient()
-password = ws.dbutils.secrets.get(scope="validation", key="NEO4J_PASSWORD")
+password = ws.dbutils.secrets.get(scope="neo4j-uc-demos", key="NEO4J_PASSWORD")
 ----
 
 === 3. Upload CSV Data to the UC Volume
 
-`upload_data.sh` uploads the aircraft digital twin CSV files from `getting-started/data/aircraft_digital_twin_data/` to the UC Volume path defined by `UC_CATALOG`, `UC_SCHEMA`, and `UC_VOLUME` in `.env`:
+`getting-started/upload_data.sh` uploads the aircraft digital twin CSV files from `getting-started/data/aircraft_digital_twin_data/` to the UC Volume path defined by `UC_CATALOG`, `UC_SCHEMA`, and `UC_VOLUME` in `.env`:
 
 [source,bash]
 ----
-./upload_data.sh
+./getting-started/upload_data.sh
 ----
 
 This writes 17 CSV files to `/Volumes/<catalog>/<schema>/<volume>/`. The JDBC JAR must also be in a UC Volume before creating the connection — upload it manually to the path set in `JDBC_JAR_PATH`.
@@ -143,20 +143,17 @@ Upload it to a UC Volume path, for example `/Volumes/catalog/schema/jars/`. The 
 
 === Credentials in Databricks Secrets
 
-Store Neo4j credentials in a Databricks secret scope rather than hardcoding them. The test suite uses a scope called `neo4j-uc-creds` with these keys:
+Store Neo4j credentials in a Databricks secret scope rather than hardcoding them. The repo-root `create_secrets.sh` provisions a scope from `.env` — by default the scope is named `neo4j-uc-demos` (configurable via `DATABRICKS_SECRET_SCOPE`) and holds `NEO4J_USERNAME` and `NEO4J_PASSWORD`:
 
 [source,python]
 ----
-SCOPE_NAME = "neo4j-uc-creds"
+SCOPE_NAME = "neo4j-uc-demos"
 
-NEO4J_HOST = dbutils.secrets.get(SCOPE_NAME, "host")
-NEO4J_USER = dbutils.secrets.get(SCOPE_NAME, "user")
-NEO4J_PASSWORD = dbutils.secrets.get(SCOPE_NAME, "password")
-JDBC_JAR_PATH = dbutils.secrets.get(SCOPE_NAME, "jdbc_jar_path")
-UC_CONNECTION_NAME = dbutils.secrets.get(SCOPE_NAME, "connection_name")
+NEO4J_USERNAME = dbutils.secrets.get(SCOPE_NAME, "NEO4J_USERNAME")
+NEO4J_PASSWORD = dbutils.secrets.get(SCOPE_NAME, "NEO4J_PASSWORD")
 ----
 
-A `setup.sh` script in the test suite reads from a `.env` file and configures these secrets automatically using the Databricks CLI.
+The repo-root `create_secrets.sh` reads `.env` and configures these secrets automatically using the Databricks CLI.
 
 == Creating the Neo4j Federated JDBC UC Connection
 
@@ -172,8 +169,8 @@ ENVIRONMENT (
 )
 OPTIONS (
   url 'jdbc:neo4j+s://your-host:7687/neo4j?enableSQLTranslation=true',
-  user secret('neo4j-uc-creds', 'user'),
-  password secret('neo4j-uc-creds', 'password'),
+  user secret('neo4j-uc-demos', 'NEO4J_USERNAME'),
+  password secret('neo4j-uc-demos', 'NEO4J_PASSWORD'),
   driver 'org.neo4j.jdbc.Neo4jDriver',
   externalOptionsAllowList 'dbtable,query,customSchema'
 )
@@ -321,7 +318,7 @@ The federated queries in this guide use Neo4j Federated JDBC UC Connection for a
 
 == References
 
-* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/01-simple-connect-test.ipynb[01-simple-connect-test.ipynb] -- runnable notebook that creates the UC JDBC connection and validates connectivity
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/getting-started/01-neo4j-uc-connection-setup.ipynb[01-neo4j-uc-connection-setup.ipynb] -- runnable notebook that creates the UC JDBC connection and validates connectivity
 * https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/docs/neo4j_uc_jdbc_guide.md[Neo4j Federated JDBC UC Connection Setup Guide] - Full configuration reference
 * https://neo4j.com/docs/jdbc-manual/current/[Neo4j JDBC Driver Documentation]
 * https://neo4j.com/docs/jdbc-manual/current/sql2cypher/[Neo4j SQL2Cypher Translation Rules]

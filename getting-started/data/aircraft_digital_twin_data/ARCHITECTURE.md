@@ -41,7 +41,7 @@ Databricks Delta stores the lakehouse tables used for analytics and joins:
 - `sensor_readings`
 
 The `sensor_readings` table is not loaded into Neo4j. It is created directly in
-Delta from `nodes_readings.csv` by `getting-started/01-simple-connect-test.ipynb`.
+Delta from `nodes_readings.csv` by `getting-started/01-neo4j-uc-connection-setup.ipynb`.
 
 ## Naming Conventions
 
