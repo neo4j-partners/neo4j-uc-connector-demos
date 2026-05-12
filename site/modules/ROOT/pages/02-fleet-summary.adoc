@@ -65,6 +65,8 @@ CROSS JOIN (
 * **Delta side** (1 subquery): Computes fleet-wide sensor averages across all 172K readings by sensor type
 * **CROSS JOIN**: Combines the single-row results from both sides into one unified fleet summary
 
+This shape follows the recommended federation pattern for the custom JDBC connection: push graph traversal and aggregation to Neo4j, aggregate lakehouse data in Spark, then combine the reduced results in a single Spark SQL statement.
+
 == Actual Output (Databricks Runtime 17.3 LTS)
 
 The following output was captured from a live Databricks cluster running against Neo4j Aura and Delta lakehouse tables:

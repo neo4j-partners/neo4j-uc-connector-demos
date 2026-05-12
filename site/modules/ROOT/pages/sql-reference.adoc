@@ -177,6 +177,10 @@ Unqualified columns (`SELECT severity`) do not need this treatment.
 
 == Federated Query Patterns
 
+=== Push work to the owning system first
+
+For custom JDBC federation, keep graph traversal and graph-side aggregation inside `remote_query()`, aggregate Delta tables in Spark, then join the reduced results in one Spark SQL statement. This follows the Databricks federation pattern of minimizing rows fetched from the remote system while keeping the cross-source join visible to Spark.
+
 === Use LEFT JOIN from the Delta side
 
 When joining a `remote_query()` result with a Delta table, let Delta drive the join. Spark's Catalyst optimizer can resolve backtick-quoted columns from a `remote_query()` CTE inconsistently when that side drives the join.
