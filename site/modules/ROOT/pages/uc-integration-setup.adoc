@@ -1,8 +1,8 @@
 = Deep Dive: Setting Up the Neo4j Federated JDBC UC Connection
-:description: Step-by-step walkthrough of connecting Neo4j to Databricks Unity Catalog via JDBC, including the SafeSpark fix, SQL-to-Cypher translation, and validated query patterns
+:description: Step-by-step walkthrough of connecting Neo4j to Databricks Unity Catalog via JDBC, including SafeSpark tuning, SQL-to-Cypher translation, and validated query patterns
 
 [.lead]
-The federated queries in this guide depend on a Neo4j Federated JDBC UC Connection. Getting that connection working required solving a SafeSpark sandbox memory issue in collaboration with Databricks engineering. This section walks through the full setup, from uploading JARs to running validated queries, so the integration can be reproduced in any Databricks workspace.
+The federated queries in this guide depend on a Neo4j Federated JDBC UC Connection. Getting that connection working required solving a SafeSpark sandbox memory issue in collaboration with Databricks engineering. This section walks through the setup from connector JAR upload to validated queries.
 
 == Required: SafeSpark Memory Configuration
 
@@ -123,19 +123,19 @@ Two preview features must be enabled in the Databricks workspace:
 |Enables the `remote_query()` SQL function for querying external sources
 |===
 
-=== JDBC Driver JARs
+=== JDBC Driver JAR
 
-The Neo4j UC connector ships as a single JAR that needs to be uploaded to a Unity Catalog Volume:
+The Neo4j JDBC Lakehouse Federation Connector ships as a single shaded JAR that needs to be uploaded to a Unity Catalog Volume:
 
 [cols="1,2"]
 |===
 |JAR |Purpose
 
-|`neo4j-unity-catalog-connector.jar`
+|`neo4j-unity-catalog-connector-<version>.jar`
 |A shaded (fat) JAR bundling the Neo4j JDBC driver, SQL-to-Cypher translation engine, and Spark subquery cleaner into a single artifact
 |===
 
-Upload it to a UC Volume path, for example `/Volumes/catalog/schema/jars/`. The `CREATE CONNECTION` statement references this path directly, so the Volume must be accessible from the cluster.
+Download the latest release from https://github.com/neo4j-labs/neo4j-unity-catalog-connector/tags[neo4j-unity-catalog-connector releases] and upload it to a UC Volume path, for example `/Volumes/catalog/schema/jars/`. The `CREATE CONNECTION` statement references this path directly, so the Volume must be accessible from the cluster.
 
 === Credentials in Databricks Secrets
 
@@ -160,7 +160,7 @@ With the prerequisites in place, the connection is a single SQL statement:
 CREATE CONNECTION neo4j_connection TYPE JDBC
 ENVIRONMENT (
   java_dependencies '[
-    "/Volumes/catalog/schema/jars/neo4j-unity-catalog-connector.jar"
+    "/Volumes/catalog/schema/jars/neo4j-unity-catalog-connector-<version>.jar"
   ]'
 )
 OPTIONS (
@@ -174,7 +174,7 @@ OPTIONS (
 
 A few things to note about this statement.
 
-The `ENVIRONMENT` block uses `java_dependencies` to load the connector JAR from the UC Volume. This is how the SafeSpark sandbox gets the driver classes. The JAR bundles the Neo4j JDBC driver and Spark subquery cleaner into a single artifact.
+The `ENVIRONMENT` block uses `java_dependencies` to load the connector JAR from the UC Volume. This is how the SafeSpark sandbox gets the driver classes. The JAR bundles the Neo4j JDBC driver, SQL-to-Cypher translator, and Spark subquery cleaner into a single artifact.
 
 NOTE: `java_dependencies` only accepts UC Volume paths. Cluster-installed libraries (e.g., Maven coordinates added via the cluster Libraries tab) cannot be referenced here; they are a separate system.
 

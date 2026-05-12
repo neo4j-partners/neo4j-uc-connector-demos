@@ -18,6 +18,7 @@ from collections import defaultdict
 from functools import reduce
 
 from data_utils import (
+    RUNTIME_ERRORS,
     Config,
     ValidationResults,
     get_config,
@@ -25,7 +26,6 @@ from data_utils import (
     inject_params,
     read_neo4j_jdbc,
 )
-
 
 GETTING_STARTED_SCHEMA = "getting_started"
 
@@ -70,7 +70,7 @@ def materialize_jdbc_table(
             row_count == expected_rows,
             f"{row_count} rows, {ms:.0f}ms",
         )
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record(f"Getting Started materialized: {table_name}", False, str(e)[:160])
 
 
@@ -86,7 +86,7 @@ def main() -> None:
     spark = SparkSession.builder.getOrCreate()
 
     # Set Neo4j credentials at session level (avoids repeating per-query)
-    spark.conf.set("neo4j.url", cfg.neo4j_bolt_uri)
+    spark.conf.set("neo4j.url", cfg.neo4j_uri)
     spark.conf.set("neo4j.authentication.type", "basic")
     spark.conf.set("neo4j.authentication.basic.username", cfg.neo4j_username)
     spark.conf.set("neo4j.authentication.basic.password", cfg.neo4j_password)
@@ -97,7 +97,7 @@ def main() -> None:
     print("=" * 60)
     print("validation: 03 Metadata Sync (Delta Tables)")
     print("=" * 60)
-    print(f"  Neo4j:    {cfg.neo4j_host}")
+    print(f"  Neo4j:    {cfg.neo4j_uri}")
     print(f"  Target:   {target_catalog}")
     print(f"  Nodes:    {target_catalog}.{nodes_schema}")
     print(f"  Rels:     {target_catalog}.{rels_schema}")
@@ -115,7 +115,7 @@ def main() -> None:
             val = session.run("RETURN 1 AS test").single()["test"]
         driver.close()
         vr.record("Neo4j connectivity", val == 1)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Neo4j connectivity", False, str(e)[:120])
 
     # ============================================================================
@@ -194,7 +194,7 @@ def main() -> None:
         if multi_label_skipped > 0:
             print(f"    (skipped {multi_label_skipped} multi-label entries)")
 
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Schema discovery", False, str(e)[:120])
 
     # ============================================================================
@@ -204,14 +204,14 @@ def main() -> None:
     try:
         spark.sql(f"USE CATALOG `{target_catalog}`")
         vr.record(f"Catalog: {target_catalog}", True)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record(f"Catalog: {target_catalog}", False, str(e)[:120])
 
     for schema_name in [nodes_schema, rels_schema, GETTING_STARTED_SCHEMA]:
         try:
             spark.sql(f"CREATE SCHEMA IF NOT EXISTS `{target_catalog}`.`{schema_name}`")
             vr.record(f"Schema: {schema_name}", True)
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Schema: {schema_name}", False, str(e)[:120])
 
     # ============================================================================
@@ -312,13 +312,13 @@ def main() -> None:
             label_results.append({"label": label, "rows": row_count, "cols": col_count})
             vr.record(f"Label: {label}", row_count > 0,
                       f"{row_count} rows, {col_count} cols, {ms:.0f}ms")
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Label: {label}", False, str(e)[:120])
 
     # ============================================================================
     # Section 6: Materialize Relationship Types
     # ============================================================================
-    print(f"\n--- Materialize Relationship Types ---")
+    print("\n--- Materialize Relationship Types ---")
 
     vr.record(
         "Relationship pattern discovery",
@@ -361,7 +361,7 @@ def main() -> None:
             rel_results.append({"type": rel_type, "rows": row_count, "cols": col_count})
             vr.record(f"Rel: {rel_type}", row_count == expected_rows,
                       f"{row_count}/{expected_rows} rows, {col_count} cols, {ms:.0f}ms")
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Rel: {rel_type}", False, str(e)[:120])
 
     materialized_rel_types = {r["type"] for r in rel_results}
@@ -412,7 +412,7 @@ def main() -> None:
         tables_df.show(50, truncate=False)
         vr.record("INFORMATION_SCHEMA tables", not missing_tables,
                   f"{table_count} tables found" if not missing_tables else f"missing: {missing_tables}")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("INFORMATION_SCHEMA tables", False, str(e)[:120])
 
     total_rows = (sum(r["rows"] for r in label_results) +

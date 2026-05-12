@@ -13,6 +13,7 @@ import sys
 import time
 
 from data_utils import (
+    RUNTIME_ERRORS,
     ValidationResults,
     get_config,
     get_neo4j_driver,
@@ -33,8 +34,7 @@ def main() -> None:
     print("=" * 60)
     print("validation: 01 Connection Validation")
     print("=" * 60)
-    print(f"  Neo4j Host:    {cfg.neo4j_host}")
-    print(f"  Bolt URI:      {cfg.neo4j_bolt_uri}")
+    print(f"  Neo4j URI:     {cfg.neo4j_uri}")
     print(f"  UC Connection: {cfg.uc_connection_name}")
     print(f"  JDBC JAR:      {cfg.jdbc_jar_path}")
     print("")
@@ -66,7 +66,7 @@ def main() -> None:
 
         driver.close()
         vr.record("Python driver connectivity", val == 1, f"{ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Python driver connectivity", False, str(e)[:120])
 
     # ============================================================================
@@ -76,7 +76,7 @@ def main() -> None:
     try:
         t0 = time.time()
         df = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg.neo4j_bolt_uri) \
+            .option("url", cfg.neo4j_uri) \
             .option("authentication.type", "basic") \
             .option("authentication.basic.username", cfg.neo4j_username) \
             .option("authentication.basic.password", cfg.neo4j_password) \
@@ -85,7 +85,7 @@ def main() -> None:
         rows = df.collect()
         ms = (time.time() - t0) * 1000
         vr.record("Spark Connector", len(rows) == 1 and rows[0]["value"] == 1, f"{ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Spark Connector", False, str(e)[:120])
 
     # ============================================================================
@@ -108,7 +108,7 @@ def main() -> None:
         rows = df.take(5)
         ms = (time.time() - t0) * 1000
         vr.record("Direct JDBC dbtable (Aircraft)", len(rows) > 0, f"{len(rows)} rows, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Direct JDBC dbtable (Aircraft)", False, str(e)[:120])
 
     # 4b: SQL translation — SELECT 1
@@ -125,7 +125,7 @@ def main() -> None:
         val = df.collect()[0]["value"]
         ms = (time.time() - t0) * 1000
         vr.record("Direct JDBC SQL translation", val == 1, f"{ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Direct JDBC SQL translation", False, str(e)[:120])
 
     # 4c: SQL aggregate — COUNT(*)
@@ -142,7 +142,7 @@ def main() -> None:
         cnt = df.collect()[0]["flight_count"]
         ms = (time.time() - t0) * 1000
         vr.record("Direct JDBC COUNT aggregate", cnt > 0, f"{cnt} flights, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Direct JDBC COUNT aggregate", False, str(e)[:120])
 
     # 4d: SQL JOIN — NATURAL JOIN (graph traversal)
@@ -162,7 +162,7 @@ def main() -> None:
         cnt = df.collect()[0]["cnt"]
         ms = (time.time() - t0) * 1000
         vr.record("Direct JDBC NATURAL JOIN", cnt > 0, f"{cnt} relationships, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Direct JDBC NATURAL JOIN", False, str(e)[:120])
 
     # ============================================================================
@@ -179,8 +179,8 @@ def main() -> None:
         )
         OPTIONS (
           url '{cfg.neo4j_jdbc_url_sql}',
-          user '{cfg.neo4j_username}',
-          password '{cfg.neo4j_password}',
+          user secret('{cfg.secret_scope}', 'NEO4J_USERNAME'),
+          password secret('{cfg.secret_scope}', 'NEO4J_PASSWORD'),
           driver 'org.neo4j.jdbc.Neo4jDriver',
           externalOptionsAllowList 'dbtable,query,partitionColumn,lowerBound,upperBound,numPartitions,fetchSize,customSchema'
         )
@@ -189,14 +189,14 @@ def main() -> None:
         spark.sql(create_sql)
         ms = (time.time() - t0) * 1000
         vr.record("UC connection created", True, f"{cfg.uc_connection_name}, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC connection created", False, str(e)[:120])
 
     # Verify connection
     try:
         df = spark.sql(f"DESCRIBE CONNECTION {cfg.uc_connection_name}")
         vr.record("UC connection described", df.count() > 0)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC connection described", False, str(e)[:120])
 
     # ============================================================================
@@ -211,7 +211,7 @@ def main() -> None:
         val = df.collect()[0]["test"]
         ms = (time.time() - t0) * 1000
         vr.record("UC JDBC basic query", val == 1, f"{ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC JDBC basic query", False, str(e)[:120])
 
     # 6b: remote_query() — SELECT 1
@@ -224,7 +224,7 @@ def main() -> None:
         val = df.collect()[0]["test"]
         ms = (time.time() - t0) * 1000
         vr.record("UC remote_query()", val == 1, f"{ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC remote_query()", False, str(e)[:120])
 
     # 6c: COUNT aggregate
@@ -235,7 +235,7 @@ def main() -> None:
         cnt = df.collect()[0]["flight_count"]
         ms = (time.time() - t0) * 1000
         vr.record("UC JDBC COUNT", cnt > 0, f"{cnt} flights, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC JDBC COUNT", False, str(e)[:120])
 
     # 6d: JOIN with aggregate
@@ -249,7 +249,7 @@ def main() -> None:
         cnt = df.collect()[0]["relationship_count"]
         ms = (time.time() - t0) * 1000
         vr.record("UC JDBC JOIN aggregate", cnt > 0, f"{cnt} relationships, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC JDBC JOIN aggregate", False, str(e)[:120])
 
     # 6e: Aggregate with WHERE
@@ -260,7 +260,7 @@ def main() -> None:
         cnt = df.collect()[0]["boeing_count"]
         ms = (time.time() - t0) * 1000
         vr.record("UC JDBC WHERE aggregate", cnt >= 0, f"{cnt} Boeing aircraft, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC JDBC WHERE aggregate", False, str(e)[:120])
 
     # 6f: Multiple aggregates
@@ -275,7 +275,7 @@ def main() -> None:
         ms = (time.time() - t0) * 1000
         vr.record("UC JDBC multiple aggregates", row["total"] > 0,
                   f"total={row['total']}, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC JDBC multiple aggregates", False, str(e)[:120])
 
     # 6g: COUNT DISTINCT
@@ -286,7 +286,7 @@ def main() -> None:
         cnt = df.collect()[0]["unique_manufacturers"]
         ms = (time.time() - t0) * 1000
         vr.record("UC JDBC COUNT DISTINCT", cnt > 0, f"{cnt} manufacturers, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("UC JDBC COUNT DISTINCT", False, str(e)[:120])
 
     if not vr.summary():

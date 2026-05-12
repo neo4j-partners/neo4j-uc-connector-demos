@@ -1,0 +1,34 @@
+# Metadata sync job.
+#
+# Grants CREATE_EXTERNAL_METADATA, then runs the materialization (Delta tables)
+# and External Metadata API registration paths. Deploy with `databricks bundle
+# deploy` and run with `databricks bundle run metadata`.
+resources:
+  jobs:
+    metadata:
+      name: "[${bundle.target}] neo4j-uc metadata sync"
+      max_concurrent_runs: 1
+
+      tasks:
+        - task_key: grant_external_metadata
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/grant_external_metadata.py
+            parameters:
+              - ${var.metadata_grant_principal}
+
+        - task_key: materialize_tables
+          depends_on:
+            - task_key: grant_external_metadata
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_extra_metadata_sync_tables.py
+            parameters: ${var.script_params}
+
+        - task_key: external_api
+          depends_on:
+            - task_key: grant_external_metadata
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_05_metadata_sync_external_api.py
+            parameters: ${var.script_params}

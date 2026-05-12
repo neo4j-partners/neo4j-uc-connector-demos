@@ -22,16 +22,6 @@ def parse_env(path: Path) -> dict[str, str]:
     return values
 
 
-def neo4j_uri(values: dict[str, str]) -> str:
-    if values.get("NEO4J_URI"):
-        return values["NEO4J_URI"]
-
-    host = values.get("NEO4J_HOST", "")
-    if host.startswith(("neo4j://", "neo4j+s://", "bolt://", "bolt+s://")):
-        return host
-    return f"neo4j+s://{host}"
-
-
 def main() -> int:
     default_env = Path(__file__).resolve().parents[2] / ".env"
     env_path = Path(sys.argv[1]) if len(sys.argv) > 1 else default_env
@@ -40,7 +30,10 @@ def main() -> int:
         return 1
 
     values = parse_env(env_path)
-    uri = neo4j_uri(values)
+    uri = values.get("NEO4J_URI", "")
+    if not uri:
+        print("ERROR: NEO4J_URI is empty", file=sys.stderr)
+        return 1
     username = values.get("NEO4J_USERNAME", "neo4j")
     password = values.get("NEO4J_PASSWORD", "")
     database = values.get("NEO4J_DATABASE", "neo4j")

@@ -20,7 +20,14 @@ Usage (via runner):
 
 import sys
 
-from data_utils import inject_params, get_config, get_neo4j_driver, csv_rows, ValidationResults
+from data_utils import (
+    RUNTIME_ERRORS,
+    ValidationResults,
+    csv_rows,
+    get_config,
+    get_neo4j_driver,
+    inject_params,
+)
 
 
 def main():
@@ -36,7 +43,7 @@ def main():
     print("run_00_load_graph: Aircraft Digital Twin Graph Setup")
     print("=" * 60)
     print("Notebook: getting-started/00-load-graph.ipynb")
-    print(f"  Neo4j URI: {cfg.neo4j_bolt_uri}")
+    print(f"  Neo4j URI: {cfg.neo4j_uri}")
     print(f"  Volume:    {vol}")
     print("")
 
@@ -50,7 +57,7 @@ def main():
         with driver.session(database=cfg.neo4j_database) as session:
             session.run("MATCH (n) DETACH DELETE n")
         results.record("Clear existing data", True)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         results.record("Clear existing data", False, str(e))
         results.summary()
         sys.exit(1)
@@ -74,7 +81,7 @@ def main():
             for query in indexes:
                 session.run(query)
         results.record("Create indexes", True, f"{len(indexes)} indexes")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         results.record("Create indexes", False, str(e))
         results.summary()
         sys.exit(1)
@@ -140,7 +147,7 @@ def main():
                 session.run(query, rows=csv_rows(csv_path))
                 count = session.run(f"MATCH (n:{label}) RETURN count(n) AS cnt").single()["cnt"]
                 results.record(f"Load {label}", count == expected, f"{count} nodes")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         results.record("Load nodes", False, str(e))
         results.summary()
         sys.exit(1)
@@ -174,7 +181,7 @@ def main():
                 query = f"UNWIND $rows AS row {match_create}"
                 session.run(query, rows=csv_rows(csv_path))
                 results.record(f"Load {rel_type}", True)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         results.record("Load relationships", False, str(e))
         results.summary()
         sys.exit(1)
@@ -192,7 +199,7 @@ def main():
             for label, expected in expected_counts.items():
                 count = session.run(f"MATCH (n:{label}) RETURN count(n) AS cnt").single()["cnt"]
                 results.record(f"Verify {label}", count == expected, f"{count} nodes")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         results.record("Verify counts", False, str(e))
 
     driver.close()

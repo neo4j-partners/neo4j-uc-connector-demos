@@ -12,6 +12,7 @@ Usage:
 import sys
 
 from data_utils import (
+    RUNTIME_ERRORS,
     ValidationResults,
     get_config,
     inject_params,
@@ -79,6 +80,7 @@ def main() -> None:
                 "reading_count",
                 "avg_value",
             )
+            .cache()
         )
         result.orderBy("aircraftId", "systemType").show(10, truncate=False)
         row_count = result.count()
@@ -87,7 +89,7 @@ def main() -> None:
             row_count == 160,
             f"{row_count} sensor+aircraft rows",
         )
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record(
             "Federated Query 1: sensor health by aircraft",
             False,
@@ -123,7 +125,7 @@ def main() -> None:
             """
         )
 
-        result = df_by_aircraft.join(aircraft_sensor_health, "aircraftId", "left")
+        result = df_by_aircraft.join(aircraft_sensor_health, "aircraftId", "left").cache()
         print("  Maintenance count + avg sensor reading per aircraft:")
         result.orderBy("maint_count", ascending=False).show(10, truncate=False)
         row_count = result.count()
@@ -132,7 +134,7 @@ def main() -> None:
             row_count == 20,
             f"{row_count} aircraft",
         )
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record(
             "Federated Query 2: maintenance severity + sensor health",
             False,
@@ -167,7 +169,7 @@ def main() -> None:
             len(flight_rows) > 0 and len(delay_rows) > 0,
             f"{len(flight_rows)} operator rows, {len(delay_rows)} delay rows",
         )
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record(
             "Federated Query 3: flight delay analysis",
             False,

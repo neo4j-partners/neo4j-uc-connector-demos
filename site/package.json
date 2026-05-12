@@ -1,7 +1,7 @@
 {
   "name": "neo4j-uc-connector-demos-docs",
   "version": "1.0.0",
-  "description": "Neo4j UC Integration - Federated Query Patterns Documentation",
+  "description": "Neo4j + Databricks Lakehouse Federation Documentation",
   "scripts": {
     "convert-diagrams": "node scripts/convert-excalidraw.js",
     "build": "antora antora-playbook.yml",

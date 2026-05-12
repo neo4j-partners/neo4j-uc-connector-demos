@@ -15,9 +15,14 @@ import time
 from collections import defaultdict
 
 import requests
-
-from data_utils import Config, ValidationResults, get_config, get_neo4j_driver, inject_params
-
+from data_utils import (
+    RUNTIME_ERRORS,
+    Config,
+    ValidationResults,
+    get_config,
+    get_neo4j_driver,
+    inject_params,
+)
 
 # Neo4j type → UC SQL type mapping
 TYPE_MAP = {
@@ -49,7 +54,7 @@ def build_label_payload(cfg: Config, label_name: str, properties: list) -> dict:
     props_map = {
         "neo4j.database": cfg.neo4j_database,
         "neo4j.label": label_name,
-        "neo4j.host": cfg.neo4j_host,
+        "neo4j.uri": cfg.neo4j_uri,
         "neo4j.property_count": str(len(columns)),
     }
     for p in properties:
@@ -66,7 +71,7 @@ def build_label_payload(cfg: Config, label_name: str, properties: list) -> dict:
         "entity_type": "NodeLabel",
         "description": f"Neo4j :{label_name} node label ({len(columns)} properties)",
         "columns": columns,
-        "url": cfg.neo4j_bolt_uri,
+        "url": cfg.neo4j_uri,
         "properties": props_map,
     }
 
@@ -80,7 +85,7 @@ def discover_workspace_auth(spark, vr: ValidationResults):
         if not workspace_url.startswith("https://"):
             workspace_url = f"https://{workspace_url}"
         print(f"  Workspace URL: {workspace_url}")
-    except Exception:
+    except RUNTIME_ERRORS:
         pass
 
     if not workspace_url:
@@ -90,7 +95,7 @@ def discover_workspace_auth(spark, vr: ValidationResults):
             ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
             workspace_url = ctx.apiUrl().get()
             print(f"  Workspace URL: {workspace_url} (from dbutils)")
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record("Workspace URL discovery", False, str(e)[:120])
 
     try:
@@ -102,7 +107,7 @@ def discover_workspace_auth(spark, vr: ValidationResults):
         # CREATE_EXTERNAL_METADATA on the metastore before registration can succeed.
         auth_token = ctx.apiToken().get()
         print(f"  Auth Token: {'*' * 8} (auto-discovered)")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Auth token discovery", False, str(e)[:120])
 
     return workspace_url, auth_token
@@ -169,7 +174,7 @@ def discover_schema(cfg: Config, vr: ValidationResults):
         for rel_type, props in sorted(discovered_relationships.items()):
             print(f"    [:{rel_type}] — {len(props)} properties")
 
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Schema discovery", False, str(e)[:120])
 
     return discovered_labels, discovered_relationships, relationship_patterns
@@ -188,7 +193,7 @@ def main() -> None:
     print("validation: 05 Metadata Sync (External Metadata API)")
     print("=" * 60)
     print("Notebook: advanced-patterns/05_metadata_sync_external_api.ipynb")
-    print(f"  Neo4j: {cfg.neo4j_host}")
+    print(f"  Neo4j: {cfg.neo4j_uri}")
 
     # ------------------------------------------------------------------
     # Section 1: Auto-discover Workspace URL and Auth Token
@@ -224,7 +229,7 @@ def main() -> None:
             val = session.run("RETURN 1 AS test").single()["test"]
         driver.close()
         vr.record("Neo4j connectivity", val == 1)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Neo4j connectivity", False, str(e)[:120])
 
     # ------------------------------------------------------------------
@@ -268,7 +273,7 @@ def main() -> None:
             else:
                 error_msg = resp.text[:100] if resp is not None else str(e)[:100]
                 vr.record(f"Register single label: {test_label}", False, error_msg)
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Register single label: {test_label}", False, str(e)[:120])
 
     # ------------------------------------------------------------------
@@ -300,7 +305,7 @@ def main() -> None:
                 continue
             error_msg = resp.text[:100] if resp is not None else str(e)[:100]
             vr.record(f"Register label: {label}", False, error_msg)
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Register label: {label}", False, str(e)[:120])
 
     # ------------------------------------------------------------------
@@ -314,7 +319,7 @@ def main() -> None:
         props_map = {
             "neo4j.database": cfg.neo4j_database,
             "neo4j.relationship_type": rel_type,
-            "neo4j.host": cfg.neo4j_host,
+            "neo4j.uri": cfg.neo4j_uri,
             "neo4j.property_count": str(len(columns)),
         }
         patterns = relationship_patterns.get(rel_type, [])
@@ -338,7 +343,7 @@ def main() -> None:
             "entity_type": "RelationshipType",
             "description": f"Neo4j [:{rel_type}] relationship type ({len(columns)} properties)",
             "columns": columns,
-            "url": cfg.neo4j_bolt_uri,
+            "url": cfg.neo4j_uri,
             "properties": props_map,
         }
 
@@ -359,13 +364,13 @@ def main() -> None:
                 continue
             error_msg = resp.text[:100] if resp is not None else str(e)[:100]
             vr.record(f"Register rel: {rel_type}", False, error_msg)
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Register rel: {rel_type}", False, str(e)[:120])
 
     # ------------------------------------------------------------------
     # Section 7: Verify — List Registered External Metadata
     # ------------------------------------------------------------------
-    print(f"\n--- Verify Registered Metadata ---")
+    print("\n--- Verify Registered Metadata ---")
     try:
         all_items = []
         page_token = None
@@ -393,7 +398,7 @@ def main() -> None:
         vr.record("Verify: list external relationship metadata",
                   rel_count >= len(discovered_relationships),
                   f"{rel_count}/{len(discovered_relationships)} rels")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Verify: list external metadata", False, str(e)[:120])
 
     # ------------------------------------------------------------------
@@ -410,7 +415,7 @@ def main() -> None:
             resp = requests.delete(f"{api_base}/{obj_id}", headers=headers)
             resp.raise_for_status()
             deleted += 1
-        except Exception:
+        except RUNTIME_ERRORS:
             pass
 
     cleanup_detail = f"{deleted}/{len(registered_ids)} deleted"

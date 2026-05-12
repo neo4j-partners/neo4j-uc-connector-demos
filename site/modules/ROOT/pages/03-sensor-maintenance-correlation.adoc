@@ -16,7 +16,7 @@ Load maintenance events from Neo4j into a Spark temp view:
 [source,python]
 ----
 neo4j_maintenance = spark.read.format("org.neo4j.spark.DataSource") \
-    .option("url", NEO4J_BOLT_URI) \
+    .option("url", NEO4J_URI) \
     .option("authentication.type", "basic") \
     .option("authentication.basic.username", NEO4J_USER) \
     .option("authentication.basic.password", NEO4J_PASSWORD) \

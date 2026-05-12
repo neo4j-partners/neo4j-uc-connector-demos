@@ -17,7 +17,7 @@ try:
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
     print(f"Spark version: {spark.version}")
-except Exception as e:
+except ImportError as e:
     print(f"Spark not available: {e}")
 
 try:

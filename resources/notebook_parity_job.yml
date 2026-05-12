@@ -1,0 +1,57 @@
+# Notebook-parity validation job.
+#
+# Runs the same Python scripts as `validation/validate.py run`, but as a
+# declarative DAB resource. Deploy with `databricks bundle deploy` and run with
+# `databricks bundle run notebook_parity`.
+resources:
+  jobs:
+    notebook_parity:
+      name: "[${bundle.target}] neo4j-uc notebook parity"
+      max_concurrent_runs: 1
+
+      tasks:
+        - task_key: load_graph
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_00_load_graph.py
+            parameters: ${var.script_params}
+
+        - task_key: connection_setup
+          depends_on:
+            - task_key: load_graph
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_01_connection_setup.py
+            parameters: ${var.script_params}
+
+        - task_key: federated_queries
+          depends_on:
+            - task_key: connection_setup
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_02_federated_queries.py
+            parameters: ${var.script_params}
+
+        - task_key: materialized_tables
+          depends_on:
+            - task_key: connection_setup
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_03_materialized_tables.py
+            parameters: ${var.script_params}
+
+        - task_key: metadata_sync_external_api
+          depends_on:
+            - task_key: connection_setup
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_05_metadata_sync_external_api.py
+            parameters: ${var.script_params}
+
+        - task_key: new_federated_queries
+          depends_on:
+            - task_key: connection_setup
+          existing_cluster_id: ${var.cluster_id}
+          spark_python_task:
+            python_file: ../validation/scripts/run_06_new_federated_queries.py
+            parameters: ${var.script_params}

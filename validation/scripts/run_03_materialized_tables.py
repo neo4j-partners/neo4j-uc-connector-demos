@@ -13,6 +13,7 @@ import sys
 import time
 
 from data_utils import (
+    RUNTIME_ERRORS,
     Config,
     ValidationResults,
     get_config,
@@ -45,7 +46,7 @@ def main() -> None:
             f"SELECT COUNT(*) AS cnt FROM {fqn}.sensor_readings"
         ).collect()[0]["cnt"]
         results.record("Delta sensor_readings", count == 172800, f"{count:,} rows")
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Delta sensor_readings", False, str(exc)[:160])
 
     for label, expected in [
@@ -63,7 +64,7 @@ def main() -> None:
                 spark, cfg, "cnt LONG", f"SELECT COUNT(*) AS cnt FROM {label}"
             ).collect()[0]["cnt"]
             results.record(f"Neo4j {label}", cnt == expected, f"{cnt} nodes")
-        except Exception as exc:
+        except RUNTIME_ERRORS as exc:
             results.record(f"Neo4j {label}", False, str(exc)[:160])
 
     print("\n--- Section 2: Materialize Neo4j Data ---")
@@ -346,7 +347,7 @@ def materialize(
             cnt == expected,
             f"{cnt} rows ({elapsed:.0f}ms)",
         )
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record(f"Materialize {table_name}", False, str(exc)[:200])
 
 
@@ -374,7 +375,7 @@ def materialize_aircraft_systems(
             f"SELECT COUNT(*) AS cnt FROM {fqn}.neo4j_aircraft_systems"
         ).collect()[0]["cnt"]
         results.record("Materialize neo4j_aircraft_systems", cnt == 80, f"{cnt} rows")
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Materialize neo4j_aircraft_systems", False, str(exc)[:200])
 
 
@@ -387,7 +388,7 @@ def record_sql_result(
         rows = df.collect()
         df.show(50, truncate=False)
         results.record(name, validator(rows), f"{len(rows)} rows")
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record(name, False, str(exc)[:200])
 
 

@@ -13,6 +13,7 @@ import sys
 import time
 
 from data_utils import (
+    RUNTIME_ERRORS,
     Config,
     ValidationResults,
     get_config,
@@ -47,7 +48,7 @@ def main() -> None:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {fqn}")
         spark.sql(f"CREATE VOLUME IF NOT EXISTS {fqn}.`{cfg.uc_volume}`")
         results.record("Create tutorial schema and volume", True, fqn)
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Create tutorial schema and volume", False, str(exc)[:160])
 
     try:
@@ -81,7 +82,7 @@ def main() -> None:
             LIMIT 5
             """
         ).show(truncate=False)
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Load sensor_readings", False, str(exc)[:200])
 
     create_lakehouse_helper_tables(spark, cfg, results)
@@ -97,9 +98,9 @@ def main() -> None:
                 java_dependencies '{cfg.java_dependencies}'
             )
             OPTIONS (
-                url '{escape_sql_string(cfg.neo4j_jdbc_url_sql)}',
-                user '{escape_sql_string(cfg.neo4j_username)}',
-                password '{escape_sql_string(cfg.neo4j_password)}',
+                url '{cfg.neo4j_jdbc_url_sql}',
+                user secret('{cfg.secret_scope}', 'NEO4J_USERNAME'),
+                password secret('{cfg.secret_scope}', 'NEO4J_PASSWORD'),
                 driver 'org.neo4j.jdbc.Neo4jDriver',
                 externalOptionsAllowList 'dbtable,query,partitionColumn,lowerBound,upperBound,numPartitions,fetchSize,customSchema'
             )
@@ -113,7 +114,7 @@ def main() -> None:
             True,
             f"{cfg.uc_connection_name}, {elapsed:.0f}ms",
         )
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Create UC JDBC connection", False, str(exc)[:200])
 
     if connection_created:
@@ -121,7 +122,7 @@ def main() -> None:
             df = read_neo4j_jdbc(spark, cfg, "test INT", "SELECT 1 AS test")
             test_val = df.collect()[0]["test"]
             results.record("Validate UC JDBC SELECT 1", test_val == 1, str(test_val))
-        except Exception as exc:
+        except RUNTIME_ERRORS as exc:
             results.record(
                 "Validate UC JDBC SELECT 1",
                 False,
@@ -162,7 +163,7 @@ def main() -> None:
             rows = df.collect()
             results.record("Flights by operator", len(rows) > 0, f"{len(rows)} rows")
             df.show(truncate=False)
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record(
             "Flights by operator",
             False,
@@ -171,11 +172,6 @@ def main() -> None:
 
     if not results.summary():
         sys.exit(1)
-
-
-def escape_sql_string(value: str) -> str:
-    """Match the notebook's simple CREATE CONNECTION SQL escaping."""
-    return value.replace("'", "\\'")
 
 
 def record_query(
@@ -196,7 +192,7 @@ def record_query(
     try:
         rows = read_neo4j_jdbc(spark, cfg, custom_schema, query).collect()
         results.record(name, validator(rows), detail(rows))
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record(
             name,
             False,
@@ -219,7 +215,7 @@ def create_lakehouse_helper_tables(spark, cfg: Config, results: ValidationResult
     try:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {lakehouse_fqn}")
         results.record("Create lakehouse schema", True, lakehouse_fqn)
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Create lakehouse schema", False, str(exc)[:160])
         return
 
@@ -303,7 +299,7 @@ def create_lakehouse_helper_tables(spark, cfg: Config, results: ValidationResult
                 count == expected_rows,
                 f"{count:,} rows",
             )
-        except Exception as exc:
+        except RUNTIME_ERRORS as exc:
             results.record(
                 f"Lakehouse helper table: {table_name}",
                 False,

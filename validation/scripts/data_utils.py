@@ -18,7 +18,25 @@ import csv
 import os
 import sys
 from dataclasses import dataclass
-from urllib.parse import urlparse
+
+import neo4j.exceptions
+import requests.exceptions
+from py4j.protocol import Py4JJavaError
+from pyspark.errors import AnalysisException, PySparkException
+
+# Operational errors expected from Spark, JDBC, HTTP, and Neo4j calls inside
+# validation sections. NameError/TypeError/AttributeError stay uncaught so
+# coding bugs surface immediately instead of being silently recorded as FAIL.
+RUNTIME_ERRORS: tuple[type[BaseException], ...] = (
+    AnalysisException,
+    PySparkException,
+    Py4JJavaError,
+    requests.exceptions.RequestException,
+    neo4j.exceptions.Neo4jError,
+    KeyError,
+    ValueError,
+    OSError,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +57,12 @@ def inject_params() -> None:
 
 
 def _load_secrets() -> None:
-    """Fetch secrets from a Databricks secret scope into os.environ."""
+    """Fetch secrets from a Databricks secret scope into os.environ.
+
+    Uses the cluster-global ``dbutils`` rather than instantiating a
+    WorkspaceClient: on any Databricks runtime ``dbutils`` is already authed
+    against the run-scoped principal.
+    """
     scope = os.environ.get("DATABRICKS_SECRET_SCOPE")
     raw_keys = os.environ.get("DATABRICKS_SECRET_KEYS")
     if not scope or not raw_keys:
@@ -48,14 +71,16 @@ def _load_secrets() -> None:
     if not keys:
         return
 
-    from databricks.sdk import WorkspaceClient
+    from py4j.protocol import Py4JJavaError
+    from pyspark.dbutils import DBUtils
+    from pyspark.sql import SparkSession
 
-    ws = WorkspaceClient()
+    dbutils = DBUtils(SparkSession.builder.getOrCreate())
     for key in keys:
         try:
-            value = ws.dbutils.secrets.get(scope=scope, key=key)
+            value = dbutils.secrets.get(scope=scope, key=key)
             os.environ.setdefault(key, value)
-        except Exception as exc:
+        except Py4JJavaError as exc:
             print(f"WARNING: failed to load secret '{key}' from scope '{scope}': {exc}")
 
 
@@ -67,12 +92,10 @@ def _load_secrets() -> None:
 class Config:
     """Resolved configuration for a validation run."""
 
-    neo4j_host: str
+    neo4j_uri: str
     neo4j_username: str
     neo4j_password: str
     neo4j_database: str
-    neo4j_bolt_uri: str
-    neo4j_jdbc_url: str
     neo4j_jdbc_url_sql: str
     uc_connection_name: str
     jdbc_jar_path: str
@@ -87,20 +110,14 @@ class Config:
     uc_schema: str
     uc_volume: str
     volume_path: str | None
+    secret_scope: str
 
 
 def get_config() -> Config:
     """Build Config from environment variables set by inject_params()."""
-    neo4j_uri = os.environ.get("NEO4J_URI")
-    neo4j_host = os.environ.get("NEO4J_HOST", "")
-    if neo4j_uri:
-        neo4j_host = _host_from_neo4j_uri(neo4j_uri)
-    elif not neo4j_host:
-        raise KeyError("NEO4J_HOST or NEO4J_URI")
-    elif neo4j_host.startswith(("neo4j+s://", "neo4j+ssc://", "neo4j://", "bolt+s://", "bolt://")):
-        neo4j_host = _host_from_neo4j_uri(neo4j_host)
-    else:
-        neo4j_host = neo4j_host.rstrip("/")
+    neo4j_uri = os.environ.get("NEO4J_URI", "").strip().rstrip("/")
+    if not neo4j_uri:
+        raise KeyError("NEO4J_URI")
 
     uc_catalog = os.environ.get("UC_CATALOG")
     uc_schema = os.environ.get("UC_SCHEMA", "neo4j_getting_started")
@@ -113,17 +130,15 @@ def get_config() -> Config:
         f"/Volumes/{uc_catalog}/{uc_schema}/{uc_volume}" if uc_catalog else None
     )
     neo4j_database = os.environ.get("NEO4J_DATABASE", "neo4j")
-    neo4j_host_with_port = _with_default_port(neo4j_host, 7687)
     jdbc_jar_path = os.environ["JDBC_JAR_PATH"]
+    secret_scope = os.environ["DATABRICKS_SECRET_SCOPE"]
 
     return Config(
-        neo4j_host=neo4j_host,
+        neo4j_uri=neo4j_uri,
         neo4j_username=os.environ.get("NEO4J_USERNAME", "neo4j"),
         neo4j_password=os.environ["NEO4J_PASSWORD"],
         neo4j_database=neo4j_database,
-        neo4j_bolt_uri=f"neo4j+s://{neo4j_host_with_port}",
-        neo4j_jdbc_url=f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}",
-        neo4j_jdbc_url_sql=f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}?enableSQLTranslation=true",
+        neo4j_jdbc_url_sql=f"jdbc:{neo4j_uri}/{neo4j_database}?enableSQLTranslation=true",
         uc_connection_name=os.environ["UC_CONNECTION_NAME"],
         jdbc_jar_path=jdbc_jar_path,
         java_dependencies=f'["{jdbc_jar_path}"]',
@@ -137,23 +152,8 @@ def get_config() -> Config:
         uc_schema=uc_schema,
         uc_volume=uc_volume,
         volume_path=volume_path,
+        secret_scope=secret_scope,
     )
-
-
-def _host_from_neo4j_uri(value: str) -> str:
-    """Return the host from a Neo4j/Bolt URI without path or trailing slash."""
-    uri = value.strip().removeprefix("jdbc:").rstrip("/")
-    parsed = urlparse(uri)
-    if parsed.netloc:
-        return parsed.netloc
-    return uri.split("://", 1)[-1].split("/", 1)[0]
-
-
-def _with_default_port(host: str, port: int) -> str:
-    """Append a default port when a host string does not already include one."""
-    if ":" in host:
-        return host
-    return f"{host}:{port}"
 
 
 # ---------------------------------------------------------------------------
@@ -195,12 +195,12 @@ def csv_rows(path: str) -> list[dict[str, str]]:
 def get_neo4j_driver(cfg: Config):
     """Create and return a Neo4j driver from config.
 
-    Uses cfg.neo4j_bolt_uri, which get_config() always builds as
-    neo4j+s://host:port (TLS). Non-TLS bolt is not supported by validation —
-    the project targets Neo4j Aura where TLS is mandatory.
+    Uses cfg.neo4j_uri (for example, neo4j+s://<instance>.databases.neo4j.io).
+    Non-TLS schemes are not supported by validation — the project targets
+    Neo4j Aura where TLS is mandatory.
     """
     from neo4j import GraphDatabase
-    return GraphDatabase.driver(cfg.neo4j_bolt_uri, auth=(cfg.neo4j_username, cfg.neo4j_password))
+    return GraphDatabase.driver(cfg.neo4j_uri, auth=(cfg.neo4j_username, cfg.neo4j_password))
 
 
 # ---------------------------------------------------------------------------

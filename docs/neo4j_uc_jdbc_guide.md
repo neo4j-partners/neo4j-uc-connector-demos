@@ -8,18 +8,6 @@ This guide explains how to connect to Neo4j from Databricks using a Unity Catalo
 
 This integration was validated by working with Databricks engineering to resolve a SafeSpark compatibility issue. The root cause was **metaspace memory exhaustion** in the SafeSpark sandbox during Neo4j JDBC driver initialization. With the correct Spark configuration, Unity Catalog JDBC connections to Neo4j work correctly.
 
-### Component Test Results
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Network Connectivity | **PASS** | TCP to Neo4j port 7687 |
-| Neo4j Python Driver | **PASS** | Bolt protocol works |
-| Neo4j Spark Connector | **PASS** | `org.neo4j.spark.DataSource` works |
-| Neo4j JDBC SQL-to-Cypher | **PASS** | Aggregates, GROUP BY, HAVING, ORDER BY, JOINs, dbtable all work |
-| Direct JDBC (Non-UC) | **PASS** | Works with `customSchema` workaround |
-| **Unity Catalog JDBC** | **PASS** | Works with SafeSpark memory configuration |
-| **UC Schema Discovery** | **PASS** | Works with SafeSpark memory configuration |
-
 ---
 
 ## Prerequisites

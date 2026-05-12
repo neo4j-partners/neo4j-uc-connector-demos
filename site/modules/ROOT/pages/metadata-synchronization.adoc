@@ -1,0 +1,147 @@
+= Metadata Synchronization
+:description: Registering Neo4j labels, relationship types, and properties in Unity Catalog for discoverability and governance
+
+The UC JDBC connection registers credentials and a driver, but it does not make Neo4j labels, relationship types, and properties browsable as Unity Catalog objects. Metadata synchronization fills that gap.
+
+This project demonstrates two complementary approaches:
+
+* Materialized Delta tables, which copy Neo4j data into managed tables and make the schema available through Catalog Explorer, `INFORMATION_SCHEMA`, SQL, Genie, and dashboards.
+* External Metadata API registration, which records Neo4j schema-level facts in Unity Catalog without copying graph data.
+
+== What External Metadata Sync Proves
+
+The External Metadata API workflow proves that:
+
+* Databricks jobs can discover live Neo4j schema from the graph.
+* Neo4j node labels and relationship types can be represented in Unity Catalog external metadata.
+* `CREATE_EXTERNAL_METADATA` on the metastore is sufficient for registration.
+* Secrets, grants, uploads, and validation jobs can be automated from `.env`.
+* Unity Catalog can list and verify registered external graph metadata after creation.
+
+It does not prove query federation by itself. Query federation is validated separately by the JDBC and `remote_query()` scripts.
+
+== Graph-to-Relational Mapping
+
+Neo4j's graph model is mapped into Unity Catalog's relational namespace:
+
+[cols="1,1"]
+|===
+|Unity Catalog |Neo4j
+
+|Catalog, for example `neo4j_metadata`
+|Neo4j database
+
+|Schema `nodes`
+|Node label namespace
+
+|Table `aircraft`
+|`:Aircraft` label
+
+|Schema `relationships`
+|Relationship type namespace
+
+|Table `departs_from`
+|`:DEPARTS_FROM` relationship type
+
+|Columns
+|Neo4j properties mapped to Spark SQL types
+|===
+
+The default mapping uses one table per node label and one table per relationship type. Relationship tables include source and target identifiers plus relationship properties. Unity Catalog identifiers are lowercased, so `DEPARTS_FROM` becomes `departs_from`.
+
+== Type Mapping
+
+[cols="1,1"]
+|===
+|Neo4j Type |Spark SQL Type
+
+|`STRING`
+|`STRING`
+
+|`INTEGER`
+|`BIGINT`
+
+|`FLOAT`
+|`DOUBLE`
+
+|`BOOLEAN`
+|`BOOLEAN`
+
+|`DATE`
+|`DATE`
+
+|`LOCAL DATETIME`
+|`TIMESTAMP_NTZ`
+
+|`ZONED DATETIME`
+|`TIMESTAMP`
+
+|Lists
+|`ARRAY<...>` when the element type is supported
+
+|Graph-specific types such as `POINT` or `DURATION`
+|Serialized as `STRING`
+|===
+
+== Discovering Neo4j Schema
+
+The richest schema source is APOC:
+
+[source,cypher]
+----
+CALL apoc.meta.schema({sample: -1})
+YIELD value
+----
+
+When APOC is unavailable, the workflow can fall back to built-in Neo4j procedures:
+
+[source,cypher]
+----
+CALL db.schema.nodeTypeProperties()
+CALL db.schema.relTypeProperties()
+SHOW CONSTRAINTS YIELD *
+SHOW INDEXES YIELD *
+----
+
+== Required Privilege
+
+External metadata registration requires `CREATE_EXTERNAL_METADATA` on the metastore. Without it, the API returns `PERMISSION_DENIED`.
+
+The validation workflow automates the grant through a one-shot Databricks job:
+
+[source,bash]
+----
+cd validation
+uv run python validate.py grant
+----
+
+To run the full metadata validation:
+
+[source,bash]
+----
+uv run python validate.py metadata
+----
+
+The grant job requires `DATABRICKS_CLUSTER_ID` because the privilege is issued through SQL on a workspace cluster.
+
+== When to Use Each Approach
+
+[cols="1,2"]
+|===
+|Approach |Use When
+
+|Delta materialization
+|Users need SQL access, Genie, dashboards, `INFORMATION_SCHEMA`, or table data in Unity Catalog
+
+|External Metadata API
+|Users need discoverability, catalog inventory, schema documentation, and lineage-oriented metadata without a data copy
+
+|Live `remote_query()`
+|Users need fresh query results from Neo4j and can write SQL against the connection directly
+|===
+
+== References
+
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/docs/metadata_synchronization.md[docs/metadata_synchronization.md]
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/advanced-patterns/05_metadata_sync_external_api.ipynb[05_metadata_sync_external_api.ipynb]
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/validation/README.md#metadata[validation metadata workflow]

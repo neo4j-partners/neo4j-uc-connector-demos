@@ -101,7 +101,7 @@ DATABRICKS_COMPUTE_MODE=cluster
 DATABRICKS_CLUSTER_ID=
 DATABRICKS_WORKSPACE_DIR=/Users/<your-email>/neo4j-uc-connector-demos
 DATABRICKS_SECRET_SCOPE=neo4j-uc-demos
-NEO4J_HOST=<instance>.databases.neo4j.io
+NEO4J_URI=neo4j+s://<instance>.databases.neo4j.io
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=
 NEO4J_DATABASE=neo4j
@@ -117,9 +117,6 @@ NODES_SCHEMA=nodes
 RELATIONSHIPS_SCHEMA=relationships
 METADATA_GRANT_PRINCIPAL=
 ```
-
-`NEO4J_HOST` should be the host only. `NEO4J_URI=neo4j+s://...` is also
-supported.
 
 First-time setup, run once from the repo root:
 

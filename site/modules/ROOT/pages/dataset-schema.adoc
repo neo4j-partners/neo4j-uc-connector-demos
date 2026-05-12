@@ -51,7 +51,7 @@ The aircraft digital twin dataset models a fleet of 20 commercial aircraft opera
 
 |===
 
-The `severity` property on `MaintenanceEvent` takes values `CRITICAL`, `WARNING`, and `INFO`. The `minutes` property on `Delay` is an integer. The `iata` property on `Airport` is the join key used when matching flight origin/destination codes to airport nodes.
+The `severity` property on `MaintenanceEvent` takes values `CRITICAL`, `MAJOR`, and `MINOR`. The `minutes` property on `Delay` is an integer. The `iata` property on `Airport` is the join key used when matching flight origin/destination codes to airport nodes.
 
 == Relationship Types
 

@@ -1,11 +1,11 @@
 = Natural Language Queries with Genie
 :description: Query federated Neo4j and Delta lakehouse data using natural language through Databricks AI/BI Genie
 
-The federated queries in this guide require hand-written SQL. With https://docs.databricks.com/aws/en/genie/[Databricks AI/BI Genie], the same data can be queried using natural language. A user asks a plain-English question and Genie generates the SQL automatically, joining across Neo4j graph data and Delta lakehouse tables, all through Unity Catalog.
+The federated queries in this guide require hand-written SQL. With https://docs.databricks.com/aws/en/genie/[Databricks AI/BI Genie], the same data can be queried using natural language. A user asks a plain-English question and Genie generates SQL automatically, joining across materialized Neo4j graph tables and Delta lakehouse tables through Unity Catalog.
 
 == How It Works
 
-Neo4j graph data (maintenance events, flights, airports) is materialized as managed Delta tables via the Neo4j Federated JDBC UC Connection. Once materialized, Genie sees all tables -- both the original Delta tables and the Neo4j-sourced tables -- as regular UC tables and generates SQL that JOINs across them transparently. The user never writes SQL, and the LLM never sees Cypher.
+Neo4j graph data is materialized as managed Delta tables via the Neo4j Federated JDBC UC Connection. Once materialized, Genie sees all tables, both the lakehouse tables and the Neo4j-sourced tables, as regular UC tables and generates SQL that JOINs across them transparently. The user never writes SQL, and the LLM never sees Cypher.
 
 === Materializing Neo4j Data
 
@@ -25,32 +25,31 @@ Live UC views over `remote_query()` would be ideal, but two Neo4j JDBC schema-in
 |Neo4j JDBC returns `NullType` for all columns -- all values come back as NULL
 |No
 
-|DataFrame API with `dbtable` + `customSchema` + `saveAsTable()`
+|DataFrame API with `query` + `customSchema` + `saveAsTable()`
 |Reads Neo4j labels with explicit column types, saves as managed Delta tables
 |Data is a point-in-time snapshot (re-run notebook to refresh)
 |Yes
 |===
 
-The working approach uses the Spark DataFrame JDBC reader with `dbtable` (avoids subquery wrapping) and `customSchema` (fixes NullType inference), then materializes the results as Delta tables via `saveAsTable()`.
+The working approach uses the Spark DataFrame JDBC reader with explicit SELECT queries and `customSchema`, then materializes the results as Delta tables via `saveAsTable()`.
 
 [source,python]
 ----
 # Example: materialize MaintenanceEvent nodes as a Delta table
-MAINTENANCE_SCHEMA = """`v$id` STRING, aircraftId STRING, systemId STRING,
-    component_id STRING, event_id STRING, severity STRING, fault STRING,
-    corrective_action STRING, reported_at STRING"""
+MAINTENANCE_SCHEMA = """eventId STRING, componentId STRING, systemId STRING,
+    aircraftId STRING, fault STRING, severity STRING, reported_at STRING,
+    corrective_action STRING"""
 
 df = spark.read.format("jdbc") \
     .option("databricks.connection", UC_CONNECTION_NAME) \
-    .option("dbtable", "MaintenanceEvent") \
+    .option("query", "SELECT eventId, componentId, systemId, aircraftId, fault, severity, reported_at, corrective_action FROM MaintenanceEvent") \
     .option("customSchema", MAINTENANCE_SCHEMA) \
-    .load() \
-    .select("aircraftId", "fault", "severity", "corrective_action", "reported_at")
+    .load()
 
-df.write.mode("overwrite").saveAsTable("lakehouse.neo4j_maintenance_events")
+df.write.format("delta").mode("overwrite").saveAsTable("lakehouse.neo4j_maintenance_events")
 ----
 
-The same pattern is used for `neo4j_flights`, `neo4j_airports`, and `neo4j_flight_airports`.
+The same pattern is used for all materialized graph tables, including `neo4j_aircraft`, `neo4j_systems`, `neo4j_sensors`, `neo4j_components`, `neo4j_maintenance_events`, `neo4j_flights`, `neo4j_airports`, and `neo4j_delays`.
 
 === Genie Space Configuration
 
@@ -68,9 +67,9 @@ A Genie space is created that includes all data sources as a unified catalog:
 * `neo4j_maintenance_events` -- maintenance events from the graph
 * `neo4j_flights` -- flight operations from the graph
 * `neo4j_airports` -- airport reference data from the graph
-* `neo4j_flight_airports` -- flight-to-airport mapping
+* `neo4j_systems`, `neo4j_sensors`, `neo4j_components` -- graph topology for aircraft systems, sensors, and components
 
-Genie sees all 8 as regular UC tables. It generates SQL that JOINs across them -- the federation is invisible to the LLM.
+Genie sees these as regular UC tables. It generates SQL that JOINs across them, so the federation and materialization details are invisible to the LLM.
 
 === Genie Instructions
 
@@ -120,8 +119,9 @@ Sensor types and units:
 Neo4j tables contain graph-sourced data materialized as Delta tables:
 - `neo4j_maintenance_events`: columns: aircraftId, fault, severity (CRITICAL, MAJOR, MINOR), corrective_action, reported_at
 - `neo4j_flights`: columns: aircraftId, flight_number, operator, origin, destination, scheduled_departure, scheduled_arrival
-- `neo4j_airports`: columns: iata, airport_name, city, country, icao, lat, lon
-- `neo4j_flight_airports`: columns: flight_number, aircraftId, airport_code, airport_name
+- `neo4j_airports`: columns: airportId, name, city, country, iata, icao
+- `neo4j_systems`: columns: systemId, aircraftId, type, name
+- `neo4j_sensors`: columns: sensorId, systemId, type, name, unit
 
 ## Cross-Source JOINs
 
@@ -147,7 +147,7 @@ User (Natural Language)
 Genie Space (NL → SQL)
   Tables: aircraft, systems, sensors, sensor_readings,
           neo4j_maintenance_events, neo4j_flights,
-          neo4j_airports, neo4j_flight_airports
+          neo4j_airports, neo4j_systems, neo4j_sensors
   Instructions: domain context + example SQL + JOIN patterns
     │
     ▼ Generated SQL
@@ -157,7 +157,7 @@ Spark SQL Engine
     │
     └── Neo4j (materialized via JDBC)
           neo4j_maintenance_events, neo4j_flights,
-          neo4j_airports, neo4j_flight_airports
+          neo4j_airports, neo4j_systems, neo4j_sensors
 ----
 
 Everything flows through Unity Catalog. No Spark Connector, no direct Bolt connection, no Python driver.

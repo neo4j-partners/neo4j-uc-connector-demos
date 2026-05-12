@@ -2,7 +2,7 @@
 :description: Natural language queries and live AI/BI dashboards on federated data, demonstrated with Lakebase as a reference for what Neo4j would gain as an official Databricks federated data source
 
 [.lead]
-This guide uses Lakebase to demonstrate Genie natural language queries and AI/BI dashboard capabilities that will be available to Neo4j once it is accepted as an official Databricks federated data source.
+This guide uses Lakebase to demonstrate Genie natural language queries and AI/BI dashboard capabilities that Neo4j would gain as an official Databricks federated data source.
 
 == Scenario 3: Genie
 

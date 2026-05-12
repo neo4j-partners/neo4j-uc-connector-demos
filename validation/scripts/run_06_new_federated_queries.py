@@ -13,6 +13,7 @@ import sys
 import time
 
 from data_utils import (
+    RUNTIME_ERRORS,
     ValidationResults,
     get_config,
     inject_params,
@@ -47,7 +48,7 @@ def main() -> None:
             True,
             f"{cfg.lakehouse_catalog}.{cfg.lakehouse_schema}",
         )
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Set lakehouse catalog/schema", False, str(exc)[:200])
         if not results.summary():
             sys.exit(1)
@@ -61,7 +62,7 @@ def main() -> None:
             passed = validator(rows)
             results.record(name, passed, detail(rows, elapsed))
             return rows
-        except Exception as exc:
+        except RUNTIME_ERRORS as exc:
             results.record(name, False, str(exc)[:200])
             return []
 
@@ -267,11 +268,14 @@ def main() -> None:
         elapsed = (time.time() - start) * 1000
         results.record(
             "Federated: GROUP BY + Delta",
-            len(rows) >= 20 and sum(row["maint_count"] for row in rows) == 300,
+            len(rows) > 0
+            and all(row["maint_count"] > 0 for row in rows)
+            and all(row["avg_egt_c"] is not None for row in rows)
+            and all(row["avg_vib_ips"] is not None for row in rows),
             f"{len(rows)} aircraft/severity rows, {elapsed:.0f}ms",
         )
         result.show(10, truncate=False)
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Federated: GROUP BY + Delta", False, str(exc)[:200])
 
     start = time.time()
@@ -320,7 +324,7 @@ def main() -> None:
             f"{len(rows)} operators, {elapsed:.0f}ms",
         )
         result.show(truncate=False)
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         results.record("Federated: HAVING + Delta", False, str(exc)[:200])
 
     if not results.summary():

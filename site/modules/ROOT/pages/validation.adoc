@@ -1,0 +1,129 @@
+= Validation
+:description: Databricks job-based validation scripts for the Neo4j Unity Catalog federation notebooks and advanced patterns
+
+The `validation/` directory contains Python scripts that upload to a Databricks workspace and run as one-time jobs. They are the automated execution path for the getting-started notebooks and selected advanced patterns.
+
+Use `validate.py` as the only validation entry point:
+
+[source,bash]
+----
+cd validation
+uv run python validate.py --help
+----
+
+The script uses `databricks-job-runner` to upload local Python files, submit them as jobs, and stream job logs. Runtime configuration is read from the repo-root `.env`. Neo4j credentials are stored in a Databricks secret scope by `./create_secrets.sh` at the repo root.
+
+== Default Notebook-Parity Run
+
+[source,bash]
+----
+cd validation
+uv run python validate.py run
+----
+
+The default run executes notebook-parity scripts in notebook order.
+
+[cols="1,3"]
+|===
+|Script |Purpose
+
+|`run_00_load_graph.py`
+|Loads the aircraft graph into Neo4j from CSV files in a UC Volume
+
+|`run_01_connection_setup.py`
+|Creates `sensor_readings`, lakehouse helper tables, and the UC JDBC connection
+
+|`run_02_federated_queries.py`
+|Runs the live federated query sections from the getting-started tutorial
+
+|`run_03_materialized_tables.py`
+|Materializes `neo4j_*` Delta tables and validates SQL/federated queries
+
+|`run_05_metadata_sync_external_api.py`
+|Registers Neo4j schema through the External Metadata API
+
+|`run_06_new_federated_queries.py`
+|Validates advanced `remote_query()` SQL and Delta joins
+|===
+
+`advanced-patterns/07_performance_diagnostics.ipynb` remains a manual notebook for latency and throughput investigation. It has no automated validation script.
+
+== Extra Regression Coverage
+
+[source,bash]
+----
+uv run python validate.py run --include-extras
+----
+
+[cols="1,3"]
+|===
+|Script |Purpose
+
+|`run_extra_connection_smoke.py`
+|Runs broader connection checks across the Python driver, Spark Connector, direct JDBC, UC JDBC, and `remote_query()`
+
+|`run_extra_federated_regression.py`
+|Runs federated query regression checks beyond the getting-started notebook coverage
+
+|`run_extra_metadata_sync_tables.py`
+|Discovers and materializes all Neo4j labels and relationships as Delta tables
+|===
+
+== First-Time Setup
+
+From the repo root:
+
+[source,bash]
+----
+cp .env.sample .env
+./getting-started/upload_data.sh
+./create_secrets.sh
+----
+
+Then run validation setup from `validation/`:
+
+[source,bash]
+----
+uv sync --locked
+uv run python validate.py check
+uv run --with neo4j python tools/check_neo4j_auth.py
+uv run python validate.py upload test_hello.py
+uv run python validate.py submit test_hello.py
+uv run python validate.py run
+----
+
+For repeat runs where uploaded scripts are already current:
+
+[source,bash]
+----
+uv run python validate.py run --skip-upload
+----
+
+== Metadata Validation
+
+The metadata suite has two paths:
+
+* `run_extra_metadata_sync_tables.py` materializes discovered Neo4j labels and relationship types as Delta tables.
+* `run_05_metadata_sync_external_api.py` registers discovered Neo4j schema as Unity Catalog External Metadata entries.
+
+The External Metadata API path requires `CREATE_EXTERNAL_METADATA` on the metastore. The grant can be automated:
+
+[source,bash]
+----
+uv run python validate.py metadata
+----
+
+Use these options for repeat runs:
+
+[source,bash]
+----
+uv run python validate.py metadata --skip-grant --skip-upload
+----
+
+See xref:metadata-synchronization.adoc[Metadata Synchronization] for the design and privilege details.
+
+== References
+
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/validation/README.md[validation/README.md]
+* xref:advanced-patterns.adoc[Advanced Patterns]
+* xref:metadata-synchronization.adoc[Metadata Synchronization]

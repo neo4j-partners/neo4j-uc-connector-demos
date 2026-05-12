@@ -3,8 +3,18 @@ name = "validation"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "databricks-job-runner==0.4.8",
+    "python-dotenv>=1.0.0",
 ]
 
-[tool.uv.sources]
-databricks-job-runner = { path = "../../databricks-job-runner", editable = true }
+[dependency-groups]
+dev = [
+    "ruff>=0.6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]

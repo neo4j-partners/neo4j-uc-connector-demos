@@ -10,22 +10,6 @@ The project also demonstrates how to make Neo4j's schema visible in Databricks C
 
 ---
 
-## Validated Components
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Network Connectivity | **PASS** | TCP to Neo4j port 7687 |
-| Neo4j Python Driver | **PASS** | Bolt protocol works |
-| Neo4j Spark Connector | **PASS** | `org.neo4j.spark.DataSource` works |
-| Neo4j JDBC SQL-to-Cypher | **PASS** | Aggregates, GROUP BY, HAVING, ORDER BY, JOINs, dbtable all work |
-| Direct JDBC (Non-UC) | **PASS** | Works with `customSchema` workaround |
-| **Unity Catalog JDBC** | **PASS** | Works with SafeSpark memory configuration |
-| **UC Schema Discovery** | **PASS** | Works with SafeSpark memory configuration |
-
-**All supported patterns pass. Use the Neo4j Spark Connector for relationship property aggregation.**
-
----
-
 ## Setup
 
 ### Prerequisites
@@ -38,7 +22,7 @@ Enable these preview features in your Databricks workspace:
 | remote_query table-valued function | Using `remote_query()` SQL function |
 
 You also need:
-- A Neo4j Aura instance with Bolt connectivity on port 7687
+- A Neo4j Aura instance
 - The Neo4j JDBC Lakehouse Federation Connector JAR, downloaded from [neo4j-unity-catalog-connector releases](https://github.com/neo4j-labs/neo4j-unity-catalog-connector/tags) and uploaded to a Unity Catalog Volume
 
 The cluster also requires SafeSpark metaspace tuning — see [SafeSpark Configuration](#safespark-configuration) below.

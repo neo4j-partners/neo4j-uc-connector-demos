@@ -1,0 +1,92 @@
+= Advanced Patterns
+:description: Advanced Databricks notebooks for Neo4j metadata synchronization, additional federated queries, and performance diagnostics
+
+The `advanced-patterns/` notebooks build on the four-step tutorial in `getting-started/`. Run the getting-started notebooks first so the aircraft digital twin graph, UC Volume data, Databricks secret scope, and Neo4j UC JDBC connection already exist.
+
+== Notebooks
+
+[cols="1,3"]
+|===
+|Notebook |Topic
+
+|https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/advanced-patterns/05_metadata_sync_external_api.ipynb[`05_metadata_sync_external_api.ipynb`]
+|Registers Neo4j schema through the Unity Catalog External Metadata API without copying graph data
+
+|https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/advanced-patterns/06_new_federated_queries.ipynb[`06_new_federated_queries.ipynb`]
+|Combines `remote_query()`, Neo4j Spark Connector reads, and Delta joins in additional federated query patterns
+
+|https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/advanced-patterns/07_performance_diagnostics.ipynb[`07_performance_diagnostics.ipynb`]
+|Probes latency and throughput characteristics of the federation paths
+|===
+
+For the materialization pattern, see xref:materialization.adoc[Delta Materialization] and the tutorial notebook `getting-started/03-materialized-tables.ipynb`.
+
+== Cluster Requirements
+
+[cols="1,1,1,1"]
+|===
+|Requirement |Metadata Sync |Federated Queries |Performance Diagnostics
+
+|Access mode
+|Any
+|Single user
+|Single user
+
+|Neo4j Spark Connector
+|Not needed
+|Required
+|Required
+
+|Neo4j Python driver
+|Required
+|Not needed
+|Not needed
+
+|SafeSpark metaspace tuning
+|Not needed
+|Required
+|Required
+|===
+
+Install the Neo4j Spark Connector as a cluster library when running the advanced federated query or performance notebooks:
+
+[source,text]
+----
+org.neo4j:neo4j-connector-apache-spark_2.12:5.4.0_for_spark_3
+----
+
+Install the Neo4j Python driver for metadata sync:
+
+[source,bash]
+----
+pip install neo4j
+----
+
+== Connector and Secrets
+
+Download the latest Neo4j JDBC Lakehouse Federation Connector from the https://github.com/neo4j-labs/neo4j-unity-catalog-connector/tags[neo4j-unity-catalog-connector releases] and upload it to a UC Volume. The path is referenced by `JDBC_JAR_PATH` in the repo-root `.env`.
+
+Secrets are provisioned from `.env`:
+
+[source,bash]
+----
+cp .env.sample .env
+./create_secrets.sh
+----
+
+`create_secrets.sh` stores `NEO4J_USERNAME` and `NEO4J_PASSWORD` in the secret scope named by `DATABRICKS_SECRET_SCOPE`.
+
+== Programmatic Validation
+
+The validation scripts provide non-notebook versions of the advanced flows:
+
+* `validation/scripts/run_05_metadata_sync_external_api.py`
+* `validation/scripts/run_06_new_federated_queries.py`
+
+See xref:validation.adoc[Validation] for the job runner workflow.
+
+== References
+
+* https://github.com/neo4j-partners/neo4j-uc-connector-demos/blob/main/advanced-patterns/README.md[advanced-patterns/README.md]
+* xref:metadata-synchronization.adoc[Metadata Synchronization]
+* xref:uc-integration-setup.adoc[UC Integration Setup]

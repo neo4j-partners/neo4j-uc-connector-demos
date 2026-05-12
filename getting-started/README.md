@@ -93,7 +93,7 @@ Enable these preview features in your Databricks workspace:
 
 #### 2. Neo4j Aura Instance
 
-A Neo4j Aura instance with Bolt connectivity on port 7687. The notebooks use the `neo4j+s://` URI scheme (Bolt over TLS), which is the default for Aura.
+A Neo4j Aura instance. The notebooks use the `neo4j+s://` URI scheme (TLS), which is the default for Aura.
 
 #### 3. Neo4j JDBC Lakehouse Federation Connector JAR
 
@@ -155,13 +155,14 @@ values. Set up the secret scope from the root `.env`:
 ```
 
 This creates a secret scope named `neo4j-uc-demos` (configurable via
-`DATABRICKS_SECRET_SCOPE` in `.env`) and stores `NEO4J_USERNAME` and
-`NEO4J_PASSWORD` as secrets.
+`DATABRICKS_SECRET_SCOPE` in `.env`) and stores `NEO4J_URI`,
+`NEO4J_USERNAME`, and `NEO4J_PASSWORD` as secrets.
 
 The notebooks retrieve credentials at runtime:
 
 ```python
 SECRET_SCOPE = "neo4j-uc-demos"
+NEO4J_URI = dbutils.secrets.get(scope=SECRET_SCOPE, key="NEO4J_URI")
 NEO4J_USERNAME = dbutils.secrets.get(scope=SECRET_SCOPE, key="NEO4J_USERNAME")
 NEO4J_PASSWORD = dbutils.secrets.get(scope=SECRET_SCOPE, key="NEO4J_PASSWORD")
 ```
@@ -173,7 +174,7 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 1. Copy and fill in the root config: `cp .env.sample .env`
 2. Upload CSV data: `./getting-started/upload_data.sh`
 3. Create secrets: `./create_secrets.sh`
-4. Open each notebook and edit its configuration cell — set `NEO4J_URI`, `UC_CATALOG`, and `JDBC_JAR_PATH` to match the values in your `.env`. The notebook config cells are independent of `.env`; Databricks notebooks don't read the local file.
+4. Open each notebook and edit its configuration cell — set `UC_CATALOG` and `JDBC_JAR_PATH` to match the values in your `.env`. `NEO4J_URI`, `NEO4J_USERNAME`, and `NEO4J_PASSWORD` are read from the Databricks secret scope, so no editing is needed for them. The notebook config cells are independent of `.env`; Databricks notebooks don't read the local file.
 5. Run `00-load-graph.ipynb` to load the aircraft graph into Neo4j.
 6. Run `01-neo4j-uc-connection-setup.ipynb` to create the `sensor_readings` table and UC JDBC connection.
 7. Run `02-federated-queries.ipynb` for live federated queries.

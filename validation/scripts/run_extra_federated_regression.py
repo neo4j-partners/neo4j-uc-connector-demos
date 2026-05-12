@@ -11,7 +11,13 @@ Usage:
 import sys
 import time
 
-from data_utils import ValidationResults, get_config, inject_params, remote_query
+from data_utils import (
+    RUNTIME_ERRORS,
+    ValidationResults,
+    get_config,
+    inject_params,
+    remote_query,
+)
 
 
 def main() -> None:
@@ -27,7 +33,7 @@ def main() -> None:
     print("validation: 02 Federated Query Patterns")
     print("=" * 60)
     print(f"  Lakehouse: {cfg.lakehouse_catalog}.{cfg.lakehouse_schema}")
-    print(f"  Neo4j:     {cfg.neo4j_host}")
+    print(f"  Neo4j:     {cfg.neo4j_uri}")
     print(f"  UC Conn:   {cfg.uc_connection_name}")
     print("")
 
@@ -39,7 +45,7 @@ def main() -> None:
             True,
             f"{cfg.lakehouse_catalog}.{cfg.lakehouse_schema}",
         )
-    except Exception as exc:
+    except RUNTIME_ERRORS as exc:
         vr.record("Set lakehouse catalog/schema", False, str(exc)[:200])
         if not vr.summary():
             sys.exit(1)
@@ -68,7 +74,7 @@ def main() -> None:
         try:
             cnt = spark.sql(f"SELECT COUNT(*) AS cnt FROM {table}").collect()[0]["cnt"]
             vr.record(f"Delta table: {table}", cnt >= min_rows, f"{cnt:,} rows")
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Delta table: {table}", False, str(e)[:120])
 
     for table, expected in expected_columns.items():
@@ -80,7 +86,7 @@ def main() -> None:
                 not missing,
                 "canonical camelCase columns" if not missing else f"missing: {', '.join(missing)}",
             )
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Delta schema: {table}", False, str(e)[:120])
 
     # ============================================================================
@@ -99,7 +105,7 @@ def main() -> None:
             result = remote_query(spark, cfg, query).collect()
             cnt = result[0]["cnt"]
             vr.record(f"Neo4j count: {label}", cnt >= min_cnt, f"{cnt:,} nodes")
-        except Exception as e:
+        except RUNTIME_ERRORS as e:
             vr.record(f"Neo4j count: {label}", False, str(e)[:120])
 
     # Graph traversal count
@@ -109,7 +115,7 @@ def main() -> None:
         ).collect()
         cnt = result[0]["cnt"]
         vr.record("Neo4j traversal: Flight→Airport", cnt > 0, f"{cnt:,} connections")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Neo4j traversal: Flight→Airport", False, str(e)[:120])
 
     # ============================================================================
@@ -166,7 +172,7 @@ def main() -> None:
                   row["total_maintenance_events"] > 0 and row["total_readings"] > 0,
                   f"maint={row['total_maintenance_events']}, readings={row['total_readings']:,}, {ms:.0f}ms")
         result.show(truncate=False)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Federated: fleet summary", False, str(e)[:200])
 
     # ============================================================================
@@ -178,7 +184,7 @@ def main() -> None:
     try:
         t0 = time.time()
         neo4j_maintenance = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg.neo4j_bolt_uri) \
+            .option("url", cfg.neo4j_uri) \
             .option("authentication.type", "basic") \
             .option("authentication.basic.username", cfg.neo4j_username) \
             .option("authentication.basic.password", cfg.neo4j_password) \
@@ -188,14 +194,14 @@ def main() -> None:
         cnt = neo4j_maintenance.count()
         ms = (time.time() - t0) * 1000
         vr.record("Spark Connector: MaintenanceEvent", cnt > 0, f"{cnt} events, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Spark Connector: MaintenanceEvent", False, str(e)[:120])
 
     # 4b: Flights
     try:
         t0 = time.time()
         neo4j_flights = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg.neo4j_bolt_uri) \
+            .option("url", cfg.neo4j_uri) \
             .option("authentication.type", "basic") \
             .option("authentication.basic.username", cfg.neo4j_username) \
             .option("authentication.basic.password", cfg.neo4j_password) \
@@ -205,7 +211,7 @@ def main() -> None:
         cnt = neo4j_flights.count()
         ms = (time.time() - t0) * 1000
         vr.record("Spark Connector: Flight", cnt > 0, f"{cnt} flights, {ms:.0f}ms")
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Spark Connector: Flight", False, str(e)[:120])
 
     # ============================================================================
@@ -258,7 +264,7 @@ def main() -> None:
         ms = (time.time() - t0) * 1000
         vr.record("Federated: sensor+maintenance", cnt > 0, f"{cnt} aircraft, {ms:.0f}ms")
         result.show(10, truncate=False)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Federated: sensor+maintenance", False, str(e)[:200])
 
     # ============================================================================
@@ -306,7 +312,7 @@ def main() -> None:
         ms = (time.time() - t0) * 1000
         vr.record("Federated: flights+engine", cnt > 0, f"{cnt} aircraft, {ms:.0f}ms")
         result.show(10, truncate=False)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Federated: flights+engine", False, str(e)[:200])
 
     # ============================================================================
@@ -366,7 +372,7 @@ def main() -> None:
         ms = (time.time() - t0) * 1000
         vr.record("Federated: fleet health dashboard", cnt > 0, f"{cnt} aircraft, {ms:.0f}ms")
         result.show(10, truncate=False)
-    except Exception as e:
+    except RUNTIME_ERRORS as e:
         vr.record("Federated: fleet health dashboard", False, str(e)[:200])
 
     if not vr.summary():
