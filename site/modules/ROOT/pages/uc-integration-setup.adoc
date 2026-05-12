@@ -74,7 +74,7 @@ cp .env.sample .env
 
 === 2. Create the Databricks Secret Scope
 
-`create_secrets.sh` reads the Neo4j credentials, UC settings, JDBC JAR path, connection name, and optional lakehouse settings from `.env`, creates the secret scope if it doesn't exist, and stores them:
+`create_secrets.sh` reads the Neo4j credentials, UC settings, JDBC JAR path, connection name, and `LAKEHOUSE_SCHEMA` from `.env`, creates the secret scope if it doesn't exist, and stores them:
 
 [source,bash]
 ----
@@ -140,7 +140,7 @@ Download the latest release from https://github.com/neo4j-labs/neo4j-unity-catal
 
 === Credentials in Databricks Secrets
 
-Store notebook configuration in a Databricks secret scope rather than hardcoding it. `create_secrets.sh` provisions a scope from `.env`. By default the scope is named `neo4j-uc-demos` and holds the Neo4j credentials plus shared UC, JDBC, and optional lakehouse settings. The scope name is configurable via `DATABRICKS_SECRET_SCOPE`:
+Store notebook configuration in a Databricks secret scope rather than hardcoding it. `create_secrets.sh` provisions a scope from `.env`. By default the scope is named `neo4j-uc-demos` and holds the Neo4j credentials plus shared UC, JDBC, and `LAKEHOUSE_SCHEMA` settings. The scope name is configurable via `DATABRICKS_SECRET_SCOPE`:
 
 [source,python]
 ----

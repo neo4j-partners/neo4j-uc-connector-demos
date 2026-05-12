@@ -32,6 +32,7 @@ ENV_TO_VAR: dict[str, str] = {
     "NEO4J_URI": "neo4j_uri",
     "NEO4J_DATABASE": "neo4j_database",
     "DATABRICKS_CLUSTER_ID": "cluster_id",
+    "LAKEHOUSE_CATALOG": "lakehouse_catalog",
     "LAKEHOUSE_SCHEMA": "lakehouse_schema",
     "METADATA_CATALOG": "metadata_catalog",
     "NODES_SCHEMA": "nodes_schema",

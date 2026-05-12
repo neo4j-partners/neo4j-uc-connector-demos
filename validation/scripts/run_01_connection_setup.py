@@ -208,7 +208,7 @@ def create_lakehouse_helper_tables(spark, cfg: Config, results: ValidationResult
     tables, so validation creates those from the same uploaded CSV data instead
     of assuming they already exist.
     """
-    lakehouse_fqn = f"`{cfg.uc_catalog}`.`{cfg.lakehouse_schema}`"
+    lakehouse_fqn = cfg.lakehouse_fqn
     volume_path = cfg.volume_path
 
     print("\n--- Validation Setup: Lakehouse Helper Tables ---")

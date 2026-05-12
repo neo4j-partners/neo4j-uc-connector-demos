@@ -36,17 +36,17 @@ def main() -> None:
     print("validation: 06 New Federated Queries")
     print("=" * 60)
     print("Notebook: advanced-patterns/06_new_federated_queries.ipynb")
-    print(f"  Lakehouse: {cfg.uc_catalog}.{cfg.lakehouse_schema}")
+    print(f"  Lakehouse: {cfg.lakehouse_catalog}.{cfg.lakehouse_schema}")
     print(f"  UC Conn:   {conn}")
     print("")
 
     try:
-        spark.sql(f"USE CATALOG `{cfg.uc_catalog}`")
+        spark.sql(f"USE CATALOG `{cfg.lakehouse_catalog}`")
         spark.sql(f"USE SCHEMA `{cfg.lakehouse_schema}`")
         results.record(
             "Set lakehouse catalog/schema",
             True,
-            f"{cfg.uc_catalog}.{cfg.lakehouse_schema}",
+            f"{cfg.lakehouse_catalog}.{cfg.lakehouse_schema}",
         )
     except RUNTIME_ERRORS as exc:
         results.record("Set lakehouse catalog/schema", False, str(exc)[:200])

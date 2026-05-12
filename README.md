@@ -53,7 +53,7 @@ Notebooks retrieve Neo4j credentials, UC settings, the JDBC JAR path, and the co
 ./create_secrets.sh
 ```
 
-This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores the Neo4j credentials plus the shared UC, JDBC, and optional lakehouse settings.
+This creates a secret scope named by `DATABRICKS_SECRET_SCOPE` in `.env` and stores the Neo4j credentials plus the shared UC, JDBC, and `LAKEHOUSE_SCHEMA` settings.
 
 ---
 

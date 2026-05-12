@@ -100,6 +100,7 @@ class Config:
     uc_connection_name: str
     jdbc_jar_path: str
     java_dependencies: str
+    lakehouse_catalog: str
     lakehouse_schema: str
     lakehouse_fqn: str
     metadata_catalog: str
@@ -108,7 +109,7 @@ class Config:
     uc_catalog: str
     uc_schema: str
     uc_volume: str
-    volume_path: str | None
+    volume_path: str
     secret_scope: str
 
 
@@ -123,6 +124,7 @@ def get_config() -> Config:
         raise KeyError("UC_CATALOG")
     uc_schema = os.environ.get("UC_SCHEMA", "neo4j_getting_started")
     uc_volume = os.environ.get("UC_VOLUME", "aircraft_data")
+    lakehouse_catalog = os.environ.get("LAKEHOUSE_CATALOG") or uc_catalog
     lakehouse_schema = os.environ.get("LAKEHOUSE_SCHEMA") or "lakehouse"
     volume_path = f"/Volumes/{uc_catalog}/{uc_schema}/{uc_volume}"
     neo4j_database = os.environ.get("NEO4J_DATABASE", "neo4j")
@@ -138,8 +140,9 @@ def get_config() -> Config:
         uc_connection_name=os.environ["UC_CONNECTION_NAME"],
         jdbc_jar_path=jdbc_jar_path,
         java_dependencies=f'["{jdbc_jar_path}"]',
+        lakehouse_catalog=lakehouse_catalog,
         lakehouse_schema=lakehouse_schema,
-        lakehouse_fqn=f"`{uc_catalog}`.`{lakehouse_schema}`",
+        lakehouse_fqn=f"`{lakehouse_catalog}`.`{lakehouse_schema}`",
         metadata_catalog=os.environ.get("METADATA_CATALOG", "neo4j_metadata"),
         nodes_schema=os.environ.get("NODES_SCHEMA", "nodes"),
         relationships_schema=os.environ.get("RELATIONSHIPS_SCHEMA", "relationships"),
