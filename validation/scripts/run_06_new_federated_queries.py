@@ -1,21 +1,12 @@
-"""Advanced Spark and remote_query validation.
+"""Notebook parity for advanced-patterns/06_new_federated_queries.ipynb.
 
-This script owns the Databricks/Spark side of the advanced federation matrix.
-Driver-only SQL translation regressions live in driver-tests.
-
-Coverage:
-  1. GROUP BY, with projected and non-projected keys
-  2. Multiple aggregates and COUNT(DISTINCT ...)
-  3. HAVING, including non-projected and compound predicates
-  4. Aggregate ORDER BY, DISTINCT, LIMIT, and OFFSET
-  5. Combined post-aggregate clauses
-  6. Federated remote_query aggregate results joined to Delta tables
-  7. JOIN + GROUP BY traversal queries
-  8. The exact federated patterns from advanced-patterns/06
+Runs the same advanced remote_query SQL cells and federated Delta joins without
+running the notebook itself. Assertions are added around the notebook display
+operations.
 
 Usage:
-    uv run python -m cli upload run_05_advanced_spark_queries.py
-    uv run python -m cli submit run_05_advanced_spark_queries.py
+    uv run python -m cli upload run_06_new_federated_queries.py
+    uv run python -m cli submit run_06_new_federated_queries.py
 """
 
 import sys
@@ -24,26 +15,38 @@ import time
 from data_utils import ValidationResults, get_config, inject_params
 
 
-def main():
+def main() -> None:
     inject_params()
     cfg = get_config()
 
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
-    spark.sql(f"USE CATALOG `{cfg['lakehouse_catalog']}`")
-    spark.sql(f"USE SCHEMA `{cfg['lakehouse_schema']}`")
-
     results = ValidationResults()
     conn = cfg["uc_connection_name"]
     lakehouse = cfg["lakehouse_fqn"]
 
     print("=" * 60)
-    print("validation: 05 Advanced Spark Queries")
+    print("validation: 06 New Federated Queries")
     print("=" * 60)
+    print("Notebook: advanced-patterns/06_new_federated_queries.ipynb")
     print(f"  Lakehouse: {cfg['lakehouse_catalog']}.{cfg['lakehouse_schema']}")
     print(f"  UC Conn:   {conn}")
     print("")
+
+    try:
+        spark.sql(f"USE CATALOG `{cfg['lakehouse_catalog']}`")
+        spark.sql(f"USE SCHEMA `{cfg['lakehouse_schema']}`")
+        results.record(
+            "Set lakehouse catalog/schema",
+            True,
+            f"{cfg['lakehouse_catalog']}.{cfg['lakehouse_schema']}",
+        )
+    except Exception as exc:
+        results.record("Set lakehouse catalog/schema", False, str(exc)[:200])
+        if not results.summary():
+            sys.exit(1)
+        return
 
     def rq(query: str):
         """Execute SQL through Databricks remote_query()."""
@@ -72,14 +75,14 @@ def main():
 
     record_query(
         "GROUP BY projected key",
-        "SELECT severity, COUNT(*) AS cnt FROM MaintenanceEvent GROUP BY severity",
+        "SELECT severity, COUNT(*) AS cnt FROM MaintenanceEvent m GROUP BY severity",
         lambda rows: len(rows) >= 3 and sum(row["cnt"] for row in rows) == 300,
         row_count_detail,
     )
 
     record_query(
         "GROUP BY non-projected key",
-        "SELECT COUNT(*) AS cnt FROM MaintenanceEvent GROUP BY severity",
+        "SELECT COUNT(*) AS cnt FROM MaintenanceEvent m GROUP BY severity",
         lambda rows: len(rows) >= 3 and sum(row["cnt"] for row in rows) == 300,
         row_count_detail,
     )
@@ -90,7 +93,7 @@ def main():
         SELECT operator, COUNT(*) AS flights,
                COUNT(DISTINCT origin) AS origins,
                COUNT(DISTINCT destination) AS destinations
-        FROM Flight
+        FROM Flight f
         GROUP BY operator
         """,
         any_rows,
@@ -99,14 +102,14 @@ def main():
 
     record_query(
         "HAVING simple",
-        "SELECT operator, COUNT(*) AS cnt FROM Flight GROUP BY operator HAVING cnt > 20",
+        "SELECT operator, COUNT(*) AS cnt FROM Flight f GROUP BY operator HAVING cnt > 20",
         lambda rows: any_rows(rows) and all(row["cnt"] > 20 for row in rows),
         row_count_detail,
     )
 
     record_query(
         "HAVING non-projected aggregate",
-        "SELECT severity FROM MaintenanceEvent GROUP BY severity HAVING COUNT(*) > 10",
+        "SELECT severity FROM MaintenanceEvent m GROUP BY severity HAVING COUNT(*) > 10",
         any_rows,
         row_count_detail,
     )
@@ -115,7 +118,7 @@ def main():
         "HAVING compound",
         """
         SELECT operator, COUNT(*) AS cnt
-        FROM Flight
+        FROM Flight f
         GROUP BY operator
         HAVING COUNT(*) > 10 AND COUNT(DISTINCT origin) > 2
         """,
@@ -125,7 +128,7 @@ def main():
 
     record_query(
         "ORDER BY aggregate alias",
-        "SELECT severity, COUNT(*) AS cnt FROM MaintenanceEvent GROUP BY severity ORDER BY cnt DESC",
+        "SELECT severity, COUNT(*) AS cnt FROM MaintenanceEvent m GROUP BY severity ORDER BY cnt DESC",
         lambda rows: any_rows(rows) and [row["cnt"] for row in rows] == sorted(
             [row["cnt"] for row in rows], reverse=True
         ),
@@ -136,7 +139,7 @@ def main():
         "ORDER BY multi-key",
         """
         SELECT operator, COUNT(*) AS cnt, COUNT(DISTINCT origin) AS routes
-        FROM Flight
+        FROM Flight f
         GROUP BY operator
         ORDER BY cnt DESC, routes
         """,
@@ -146,7 +149,7 @@ def main():
 
     record_query(
         "DISTINCT + GROUP BY",
-        "SELECT DISTINCT operator, COUNT(*) AS cnt FROM Flight GROUP BY operator",
+        "SELECT DISTINCT operator, COUNT(*) AS cnt FROM Flight f GROUP BY operator",
         any_rows,
         row_count_detail,
     )
@@ -155,7 +158,7 @@ def main():
         "LIMIT + OFFSET",
         """
         SELECT operator, COUNT(*) AS cnt
-        FROM Flight
+        FROM Flight f
         GROUP BY operator
         ORDER BY cnt DESC
         LIMIT 3 OFFSET 1
@@ -168,7 +171,7 @@ def main():
         "HAVING + ORDER BY + LIMIT + OFFSET",
         """
         SELECT severity, COUNT(*) AS cnt
-        FROM MaintenanceEvent
+        FROM MaintenanceEvent m
         GROUP BY severity
         HAVING COUNT(*) > 5
         ORDER BY cnt DESC
@@ -182,7 +185,7 @@ def main():
         "All clauses combined",
         """
         SELECT DISTINCT severity, COUNT(*) AS cnt, MAX(fault) AS last_fault
-        FROM MaintenanceEvent
+        FROM MaintenanceEvent m
         WHERE severity IS NOT NULL
         GROUP BY severity
         HAVING COUNT(*) > 1
@@ -202,7 +205,10 @@ def main():
         NATURAL JOIN Airport a
         GROUP BY a.iata
         """,
-        lambda rows: len(rows) >= 2 and sum(row["flight_count"] for row in rows) == 800,
+        lambda rows: (
+            len(rows) >= 2
+            and sum(row["flight_count"] for row in rows) == 800
+        ),
         row_count_detail,
     )
 
@@ -215,7 +221,10 @@ def main():
         NATURAL JOIN Airport a
         GROUP BY a.iata
         """,
-        lambda rows: len(rows) >= 2 and sum(row["flight_count"] for row in rows) == 800,
+        lambda rows: (
+            len(rows) >= 2
+            and sum(row["flight_count"] for row in rows) == 800
+        ),
         row_count_detail,
     )
 
@@ -228,7 +237,7 @@ def main():
                 SELECT *
                 FROM remote_query('{conn}',
                     query => 'SELECT aircraftId, severity, COUNT(*) AS cnt
-                              FROM MaintenanceEvent
+                              FROM MaintenanceEvent m
                               GROUP BY aircraftId, severity
                               ORDER BY cnt DESC')
             ),
@@ -274,7 +283,7 @@ def main():
                     query => 'SELECT operator,
                                      COUNT(*) AS flight_count,
                                      COUNT(DISTINCT aircraftId) AS aircraft_count
-                              FROM Flight
+                              FROM Flight f
                               GROUP BY operator
                               HAVING COUNT(*) > 20
                               ORDER BY flight_count DESC')

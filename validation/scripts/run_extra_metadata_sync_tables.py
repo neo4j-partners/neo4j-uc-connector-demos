@@ -1,4 +1,4 @@
-"""Metadata sync: materialize Neo4j schema as Delta tables.
+"""Extra metadata regression coverage: materialize Neo4j schema as Delta tables.
 
 Discovers all node labels and relationship types from Neo4j, then materializes
 each as a managed Delta table in a target catalog via the Spark Connector.
@@ -7,8 +7,8 @@ Node labels → {catalog}.nodes.{label}
 Relationship types → {catalog}.relationships.{rel_type}
 
 Usage:
-    uv run python -m cli upload run_03_metadata_sync_tables.py
-    uv run python -m cli submit run_03_metadata_sync_tables.py
+    ./validate.sh --include-extras
+    uv run python -m cli submit run_extra_metadata_sync_tables.py
 """
 
 import re

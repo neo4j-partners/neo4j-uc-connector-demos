@@ -110,8 +110,8 @@ else
 fi
 
 SCRIPTS=(
-    "run_03_metadata_sync_tables.py"
-    "run_04_metadata_sync_api.py"
+    "run_extra_metadata_sync_tables.py"
+    "run_05_metadata_sync_external_api.py"
 )
 
 FAILED=0

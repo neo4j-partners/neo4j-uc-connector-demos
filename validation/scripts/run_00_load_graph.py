@@ -35,6 +35,7 @@ def main():
     print("=" * 60)
     print("run_00_load_graph: Aircraft Digital Twin Graph Setup")
     print("=" * 60)
+    print("Notebook: getting-started/00-load-graph.ipynb")
     print(f"  Neo4j URI: {cfg['neo4j_uri']}")
     print(f"  Volume:    {vol}")
     print("")
@@ -59,18 +60,18 @@ def main():
     # ------------------------------------------------------------------
     print("\n--- Section 2: Create Indexes ---")
     indexes = [
-        ("Aircraft",         "aircraftId",  "CREATE INDEX aircraft_id IF NOT EXISTS FOR (n:Aircraft) ON (n.aircraftId)"),
-        ("Airport",          "airportId",   "CREATE INDEX airport_id IF NOT EXISTS FOR (n:Airport) ON (n.airportId)"),
-        ("System",           "systemId",    "CREATE INDEX system_id IF NOT EXISTS FOR (n:System) ON (n.systemId)"),
-        ("Component",        "componentId", "CREATE INDEX component_id IF NOT EXISTS FOR (n:Component) ON (n.componentId)"),
-        ("Sensor",           "sensorId",    "CREATE INDEX sensor_id IF NOT EXISTS FOR (n:Sensor) ON (n.sensorId)"),
-        ("Flight",           "flightId",    "CREATE INDEX flight_id IF NOT EXISTS FOR (n:Flight) ON (n.flightId)"),
-        ("Delay",            "delayId",     "CREATE INDEX delay_id IF NOT EXISTS FOR (n:Delay) ON (n.delayId)"),
-        ("MaintenanceEvent", "eventId",     "CREATE INDEX maint_id IF NOT EXISTS FOR (n:MaintenanceEvent) ON (n.eventId)"),
+        "CREATE INDEX aircraft_id IF NOT EXISTS FOR (n:Aircraft) ON (n.aircraftId)",
+        "CREATE INDEX airport_id IF NOT EXISTS FOR (n:Airport) ON (n.airportId)",
+        "CREATE INDEX system_id IF NOT EXISTS FOR (n:System) ON (n.systemId)",
+        "CREATE INDEX component_id IF NOT EXISTS FOR (n:Component) ON (n.componentId)",
+        "CREATE INDEX sensor_id IF NOT EXISTS FOR (n:Sensor) ON (n.sensorId)",
+        "CREATE INDEX flight_id IF NOT EXISTS FOR (n:Flight) ON (n.flightId)",
+        "CREATE INDEX delay_id IF NOT EXISTS FOR (n:Delay) ON (n.delayId)",
+        "CREATE INDEX maint_id IF NOT EXISTS FOR (n:MaintenanceEvent) ON (n.eventId)",
     ]
     try:
         with driver.session(database=cfg["neo4j_database"]) as session:
-            for label, prop, query in indexes:
+            for query in indexes:
                 session.run(query)
         results.record("Create indexes", True, f"{len(indexes)} indexes")
     except Exception as e:

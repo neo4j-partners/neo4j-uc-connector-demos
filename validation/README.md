@@ -8,17 +8,37 @@ read from the repo-root `../.env` and passed to each job as task parameters.
 Neo4j credentials are stored in a Databricks secret scope, provisioned by the
 repo-root `../create_secrets.sh`.
 
-## What Runs
+## What Runs By Default
+
+`validate.sh` runs notebook-parity scripts in notebook order. These scripts are
+the non-notebook execution path for the code demonstrated in `getting-started/`
+and `advanced-patterns/`.
 
 | Script | Purpose |
 |--------|---------|
-| `test_hello.py` | Smoke test for remote Python and Spark execution |
-| `run_00_load_graph.py` | Loads the aircraft digital twin graph into Neo4j from CSV in a UC Volume (run once before everything else) |
-| `run_01_connection_validation.py` | Validates Neo4j driver, Spark connector, direct JDBC, UC connection creation, and `remote_query()` |
-| `run_02_federated_queries.py` | Runs federated query patterns across Neo4j and Delta lakehouse tables |
-| `run_03_metadata_sync_tables.py` | Materializes discovered Neo4j labels and relationships as Delta tables |
-| `run_04_metadata_sync_api.py` | Registers discovered Neo4j schema through the External Metadata API |
-| `run_05_advanced_spark_queries.py` | Validates advanced Spark `remote_query()` SQL and remote_query + Delta joins |
+| `run_00_load_graph.py` | Matches `getting-started/00-load-graph.ipynb`: loads the aircraft graph into Neo4j from CSV in a UC Volume |
+| `run_01_connection_setup.py` | Matches `getting-started/01-neo4j-uc-connection-setup.ipynb`: creates `sensor_readings`, lakehouse helper tables, and the UC JDBC connection |
+| `run_02_federated_queries.py` | Matches `getting-started/02-federated-queries.ipynb`: runs the three live federated query sections |
+| `run_03_materialized_tables.py` | Matches `getting-started/03-materialized-tables.ipynb`: materializes `neo4j_*` Delta tables and validates SQL/federated queries |
+| `run_05_metadata_sync_external_api.py` | Matches `advanced-patterns/05_metadata_sync_external_api.ipynb`: registers Neo4j schema through the External Metadata API |
+| `run_06_new_federated_queries.py` | Matches `advanced-patterns/06_new_federated_queries.ipynb`: validates advanced `remote_query()` SQL and Delta joins |
+
+`advanced-patterns/07_performance_diagnostics.ipynb` is optional and excluded
+from the default pass/fail suite. Run it with `./validate.sh --include-performance`.
+
+See [`coverage_manifest.md`](coverage_manifest.md) for the notebook-to-script
+coverage map and intentional differences.
+
+## Extra Regression Coverage
+
+The previous broader smoke checks are preserved, but they are not notebook
+parity. Run them with `./validate.sh --include-extras`.
+
+| Script | Purpose |
+|--------|---------|
+| `run_extra_connection_smoke.py` | Broader connection checks across Python driver, Spark Connector, direct JDBC, UC JDBC, and `remote_query()` |
+| `run_extra_federated_regression.py` | Broader federated query regression checks beyond notebook 02 |
+| `run_extra_metadata_sync_tables.py` | Discovers and materializes all Neo4j labels and relationships as Delta tables |
 
 ## Prerequisites
 
@@ -28,51 +48,35 @@ repo-root `../create_secrets.sh`.
 - A cluster ID for `cluster` mode, or access to Databricks serverless jobs
 - Neo4j Aura host, username, password, and database
 - Neo4j Unity Catalog connector JAR uploaded to a UC Volume
-- Delta lakehouse tables used by `run_02`: `aircraft`, `systems`, `sensors`, and `sensor_readings`
+- A UC Volume configured by `UC_CATALOG`, `UC_SCHEMA`, and `UC_VOLUME`
 
-The Delta tables should use the same lowerCamelCase identifier convention as
-the Neo4j graph properties:
-
-| Table | Required identifier columns |
-|-------|-----------------------------|
-| `aircraft` | `aircraftId` |
-| `systems` | `systemId`, `aircraftId` |
-| `sensors` | `sensorId`, `systemId` |
-| `sensor_readings` | `readingId`, `sensorId` |
-
-Do not expose raw Neo4j import headers such as `:ID(Aircraft)` in the lakehouse
-tables. `run_00_load_graph.py` normalizes those CSV headers when loading the
-Neo4j graph; create the Delta tables with the same lowerCamelCase identifier
-columns shown above.
+The aligned validation path creates the Delta tables it needs. It no longer
+assumes `aircraft`, `systems`, `sensors`, or `sensor_readings` already exist in
+the lakehouse schema.
 
 ## Data Setup
 
-Populate the aircraft digital twin sample data before running this validation
-suite. The dataset comes from:
+`validate.sh` sets up data before submitting Databricks jobs. The dataset comes
+from:
 
 ```text
 getting-started/data/aircraft_digital_twin_data/
 ```
 
-After configuring the repo-root `../.env` (see Quick Start below):
+After configuring the repo-root `../.env` (see Quick Start below), the default
+validation flow runs these setup steps for you:
 
 ```bash
-# From the repo root:
 ./getting-started/upload_data.sh
 ./create_secrets.sh
-
-# From validation/:
-uv run python -m cli upload run_00_load_graph.py
-uv run python -m cli submit run_00_load_graph.py
 ```
 
-`getting-started/upload_data.sh` copies the CSV files to
+`getting-started/upload_data.sh` creates the configured UC schema and managed
+volume when needed, then copies the CSV files to
 `/Volumes/${UC_CATALOG}/${UC_SCHEMA}/${UC_VOLUME}/`. `run_00_load_graph.py`
-reads them on the cluster and writes the graph into Neo4j. The
-`run_02_federated_queries.py` validation also reads Delta tables named
-`aircraft`, `systems`, `sensors`, and `sensor_readings`; make sure those
-lakehouse tables exist in `LAKEHOUSE_CATALOG.LAKEHOUSE_SCHEMA` before running
-the full suite.
+reads them on the cluster and writes the graph into Neo4j.
+`run_01_connection_setup.py` creates the tutorial `sensor_readings` table and
+the normalized lakehouse helper tables used by advanced-patterns/06.
 
 ## Quick Start
 
@@ -95,7 +99,7 @@ NEO4J_HOST=<instance>.databases.neo4j.io
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=
 NEO4J_DATABASE=neo4j
-UC_CONNECTION_NAME=aircraft_connection_v2
+UC_CONNECTION_NAME=sample_neo4j_jdbc_connection
 JDBC_JAR_PATH=/Volumes/<catalog>/<schema>/<volume>/neo4j-unity-catalog-connector.jar
 UC_CATALOG=<catalog>
 UC_SCHEMA=neo4j_getting_started
@@ -160,16 +164,34 @@ uv run python -m cli --help
 uv run python -m compileall cli scripts tools
 ```
 
-It also syntax-checks the shell wrappers, uploads all validation scripts, and
-submits `run_01_connection_validation.py`, `run_02_federated_queries.py`,
-`run_03_metadata_sync_tables.py`, `run_04_metadata_sync_api.py`, and
-`run_05_advanced_spark_queries.py` as Databricks jobs. The suite exits non-zero
-if any local check or remote job fails.
+It also syntax-checks the shell wrappers, prints the coverage manifest, uploads
+sample data, creates or updates Databricks secrets, uploads all validation
+scripts, and submits the notebook-parity scripts listed above. The suite exits
+non-zero if any local check or remote job fails.
+
+For repeat runs where sample data, secrets, or uploaded scripts are already
+current:
+
+```bash
+./validate.sh --skip-data --skip-secrets --skip-upload
+```
+
+To include the broader non-notebook regression scripts:
+
+```bash
+./validate.sh --include-extras
+```
+
+To include optional timing diagnostics:
+
+```bash
+./validate.sh --include-performance
+```
 
 To use serverless compute for a run:
 
 ```bash
-./submit.sh run_01_connection_validation.py --compute serverless
+./submit.sh run_01_connection_setup.py --compute serverless
 ./validate.sh --compute serverless
 ```
 
@@ -179,13 +201,13 @@ To use serverless compute for a run:
 
 The metadata validation has two paths:
 
-- `run_03_metadata_sync_tables.py` materializes discovered Neo4j labels and
+- `run_extra_metadata_sync_tables.py` materializes discovered Neo4j labels and
   relationship types as Delta tables in Unity Catalog.
-- `run_04_metadata_sync_api.py` registers the same discovered Neo4j schema as
+- `run_05_metadata_sync_external_api.py` registers the same discovered Neo4j schema as
   Unity Catalog External Metadata entries through
   `/api/2.0/lineage-tracking/external-metadata`.
 
-`run_04_metadata_sync_api.py` requires `CREATE_EXTERNAL_METADATA` on the
+`run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on the
 metastore. See [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata)
 for the grant setup, including why the grant must run as a cluster job and how
 `grant_external_metadata.sh` automates it.
@@ -200,7 +222,8 @@ Run the metadata suite end to end from `.env`:
 
 By default this creates or updates the Databricks secret scope from `.env`,
 grants `CREATE_EXTERNAL_METADATA`, uploads the validation scripts, and submits
-`run_03_metadata_sync_tables.py` and `run_04_metadata_sync_api.py`.
+`run_extra_metadata_sync_tables.py` and
+`run_05_metadata_sync_external_api.py`.
 
 To grant the privilege to a specific principal during the automated run, set
 `METADATA_GRANT_PRINCIPAL` in `.env`, or run the grant helper directly:
@@ -229,12 +252,12 @@ grant metastore-level privileges.
 
 ```bash
 uv run python -m cli upload --all
-uv run python -m cli upload run_01_connection_validation.py
-uv run python -m cli submit run_01_connection_validation.py
-uv run python -m cli submit run_05_advanced_spark_queries.py
-uv run python -m cli submit run_01_connection_validation.py --compute serverless
+uv run python -m cli upload run_01_connection_setup.py
+uv run python -m cli submit run_01_connection_setup.py
+uv run python -m cli submit run_06_new_federated_queries.py
+uv run python -m cli submit run_01_connection_setup.py --compute serverless
 ./validate_metadata.sh
-uv run python -m cli validate run_01_connection_validation.py
+uv run python -m cli validate run_01_connection_setup.py
 uv run python -m cli logs
 uv run python -m cli logs <run-id>
 ```
@@ -251,4 +274,4 @@ between remote Neo4j results and Delta lakehouse tables.
 - `NEO4J_USERNAME` and `NEO4J_PASSWORD` are listed in `cli/__init__.py` as secret keys, so they are not passed as plaintext job parameters.
 - Keep the repo-root `.env` local. Use `../.env.sample` for documented defaults.
 - The wrapper scripts default `UV_CACHE_DIR` to `.uv-cache/` inside this folder. Override `UV_CACHE_DIR` if you want to use a shared cache.
-- `run_04_metadata_sync_api.py` requires `CREATE_EXTERNAL_METADATA` on the metastore. See [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata) and `grant_external_metadata.sh` for the grant workflow.
+- `run_05_metadata_sync_external_api.py` requires `CREATE_EXTERNAL_METADATA` on the metastore. See [docs/metadata_synchronization.md](../docs/metadata_synchronization.md#prerequisites-granting-create_external_metadata) and `grant_external_metadata.sh` for the grant workflow.

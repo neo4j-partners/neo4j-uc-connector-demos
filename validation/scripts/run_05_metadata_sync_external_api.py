@@ -1,15 +1,14 @@
-"""Metadata sync: register Neo4j schema in UC External Metadata API.
+"""Notebook parity for advanced-patterns/05_metadata_sync_external_api.ipynb.
 
 Discovers all node labels and relationship types from Neo4j, then registers
 each as an external metadata entry in Unity Catalog via the External Metadata
 API. No Delta tables are created — this registers metadata only.
 
 Usage:
-    uv run python -m cli upload run_04_metadata_sync_api.py
-    uv run python -m cli submit run_04_metadata_sync_api.py
+    uv run python -m cli upload run_05_metadata_sync_external_api.py
+    uv run python -m cli submit run_05_metadata_sync_external_api.py
 """
 
-import json
 import re
 import sys
 import time
@@ -17,7 +16,7 @@ from collections import defaultdict
 
 import requests
 
-from data_utils import inject_params, get_config, get_neo4j_driver, ValidationResults
+from data_utils import ValidationResults, get_config, get_neo4j_driver, inject_params
 
 inject_params()
 cfg = get_config()
@@ -42,8 +41,9 @@ TYPE_MAP = {
 }
 
 print("=" * 60)
-print("validation: 04 Metadata Sync (External Metadata API)")
+print("validation: 05 Metadata Sync (External Metadata API)")
 print("=" * 60)
+print("Notebook: advanced-patterns/05_metadata_sync_external_api.ipynb")
 print(f"  Neo4j: {cfg['neo4j_host']}")
 
 # ============================================================================
@@ -183,11 +183,12 @@ except Exception as e:
 
 
 # ============================================================================
-# Section 4: Register Node Labels
+# Section 4: Register One Label Via External Metadata API
 # ============================================================================
-print(f"\n--- Register Node Labels ({len(discovered_labels)}) ---")
+print("\n--- Register Single Label (Test) ---")
 
 registered_ids = []
+test_label = None
 
 
 def is_already_exists(resp) -> bool:
@@ -223,11 +224,52 @@ def build_label_payload(label_name, properties):
         "description": f"Neo4j :{label_name} node label ({len(columns)} properties)",
         "columns": columns,
         "url": cfg["neo4j_bolt_uri"],
-        "properties": props_map
+        "properties": props_map,
     }
 
 
+if not discovered_labels:
+    vr.record("Register single label", False, "No labels discovered")
+else:
+    test_label = sorted(discovered_labels.keys())[0]
+    payload = build_label_payload(test_label, discovered_labels[test_label])
+    resp = None
+    try:
+        t0 = time.time()
+        resp = requests.post(API_BASE, headers=HEADERS, json=payload)
+        resp.raise_for_status()
+        result = resp.json()
+        ms = (time.time() - t0) * 1000
+        registered_ids.append(result["id"])
+        vr.record(
+            f"Register single label: {test_label}",
+            True,
+            f"{len(payload['columns'])} props, {ms:.0f}ms",
+        )
+
+        verify_resp = requests.get(f"{API_BASE}/{result['id']}", headers=HEADERS)
+        verify_resp.raise_for_status()
+        vr.record(f"Verify single label: {test_label}", True)
+    except requests.exceptions.HTTPError as e:
+        if is_already_exists(resp):
+            vr.record(f"Register single label: {test_label}", True, "already exists")
+        else:
+            error_msg = resp.text[:100] if resp is not None else str(e)[:100]
+            vr.record(f"Register single label: {test_label}", False, error_msg)
+    except Exception as e:
+        vr.record(f"Register single label: {test_label}", False, str(e)[:120])
+
+# ============================================================================
+# Section 5: Register Node Labels
+# ============================================================================
+print(f"\n--- Register Node Labels ({len(discovered_labels)}) ---")
+
+
 for label in sorted(discovered_labels.keys()):
+    if label == test_label and registered_ids:
+        vr.record(f"Register label: {label}", True, "already registered in test step")
+        continue
+
     props = discovered_labels[label]
     payload = build_label_payload(label, props)
 
@@ -251,7 +293,7 @@ for label in sorted(discovered_labels.keys()):
         vr.record(f"Register label: {label}", False, str(e)[:120])
 
 # ============================================================================
-# Section 5: Register Relationship Types
+# Section 6: Register Relationship Types
 # ============================================================================
 print(f"\n--- Register Relationship Types ({len(discovered_relationships)}) ---")
 
@@ -287,7 +329,7 @@ for rel_type in sorted(discovered_relationships.keys()):
         "description": f"Neo4j [:{rel_type}] relationship type ({len(columns)} properties)",
         "columns": columns,
         "url": cfg["neo4j_bolt_uri"],
-        "properties": props_map
+        "properties": props_map,
     }
 
     try:
@@ -310,7 +352,7 @@ for rel_type in sorted(discovered_relationships.keys()):
         vr.record(f"Register rel: {rel_type}", False, str(e)[:120])
 
 # ============================================================================
-# Section 6: Verify — List Registered External Metadata
+# Section 7: Verify — List Registered External Metadata
 # ============================================================================
 print(f"\n--- Verify Registered Metadata ---")
 try:
@@ -344,7 +386,7 @@ except Exception as e:
     vr.record("Verify: list external metadata", False, str(e)[:120])
 
 # ============================================================================
-# Section 7: Cleanup — delete what we registered
+# Section 8: Cleanup — delete what we registered
 # ============================================================================
 print(f"\n--- Cleanup ({len(registered_ids)} objects) ---")
 deleted = 0

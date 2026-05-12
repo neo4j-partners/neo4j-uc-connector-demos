@@ -3,8 +3,8 @@
 #
 # Usage:
 #   ./submit.sh                                      # runs test_hello.py (default)
-#   ./submit.sh run_01_connection_validation.py      # runs connection validation
-#   ./submit.sh run_01_connection_validation.py --compute serverless
+#   ./submit.sh run_01_connection_setup.py           # runs notebook 01 parity
+#   ./submit.sh run_01_connection_setup.py --compute serverless
 
 set -euo pipefail
 

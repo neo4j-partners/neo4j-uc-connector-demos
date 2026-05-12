@@ -64,7 +64,7 @@ Loads the full aircraft digital twin dataset into Neo4j from CSV files in a UC V
 
 Run this once before the other notebooks.
 
-### 01 — Simple Connect Test
+### 01 — Connection Setup
 
 Creates the `sensor_readings` Delta table from the CSV in the UC Volume, creates and validates the Unity Catalog JDBC connection, and runs basic SQL queries against Neo4j through the connector.
 
@@ -142,7 +142,8 @@ to your UC Volume before running the notebooks:
 ./getting-started/upload_data.sh
 ```
 
-This copies all CSV files to `/Volumes/{UC_CATALOG}/{UC_SCHEMA}/{UC_VOLUME}/`.
+This creates the configured UC schema and managed volume when needed, then
+copies all CSV files to `/Volumes/{UC_CATALOG}/{UC_SCHEMA}/{UC_VOLUME}/`.
 
 ### Set Up Databricks Secrets
 
@@ -172,7 +173,7 @@ For the full reference on connection setup, query patterns, and troubleshooting,
 1. Copy and fill in the root config: `cp .env.sample .env`
 2. Upload CSV data: `./getting-started/upload_data.sh`
 3. Create secrets: `./create_secrets.sh`
-4. Update the configuration cell in each notebook with your `NEO4J_URI`, `UC_CATALOG`, and `JDBC_JAR_PATH`.
+4. Open each notebook and edit its configuration cell — set `NEO4J_URI`, `UC_CATALOG`, and `JDBC_JAR_PATH` to match the values in your `.env`. The notebook config cells are independent of `.env`; Databricks notebooks don't read the local file.
 5. Run `00-load-graph.ipynb` to load the aircraft graph into Neo4j.
 6. Run `01-neo4j-uc-connection-setup.ipynb` to create the `sensor_readings` table and UC JDBC connection.
 7. Run `02-federated-queries.ipynb` for live federated queries.

@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./upload.sh                          # uploads test_hello.py (default)
-#   ./upload.sh run_01_connection_validation.py   # uploads a specific file
+#   ./upload.sh run_01_connection_setup.py        # uploads a specific file
 #   ./upload.sh --all                    # uploads all scripts/*.py files
 
 set -euo pipefail

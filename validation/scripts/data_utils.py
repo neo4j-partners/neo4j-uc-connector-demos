@@ -79,11 +79,13 @@ def get_config() -> dict:
     neo4j_database = os.environ.get("NEO4J_DATABASE", "neo4j")
     uc_connection_name = os.environ["UC_CONNECTION_NAME"]
     jdbc_jar_path = os.environ["JDBC_JAR_PATH"]
-    lakehouse_catalog = os.environ["LAKEHOUSE_CATALOG"]
-    lakehouse_schema = os.environ.get("LAKEHOUSE_SCHEMA", "lakehouse")
     uc_catalog = os.environ.get("UC_CATALOG")
     uc_schema = os.environ.get("UC_SCHEMA", "neo4j_getting_started")
     uc_volume = os.environ.get("UC_VOLUME", "aircraft_data")
+    lakehouse_catalog = os.environ.get("LAKEHOUSE_CATALOG") or uc_catalog
+    lakehouse_schema = os.environ.get("LAKEHOUSE_SCHEMA") or "lakehouse"
+    if not lakehouse_catalog:
+        raise KeyError("LAKEHOUSE_CATALOG or UC_CATALOG")
     volume_path = (
         f"/Volumes/{uc_catalog}/{uc_schema}/{uc_volume}" if uc_catalog else None
     )

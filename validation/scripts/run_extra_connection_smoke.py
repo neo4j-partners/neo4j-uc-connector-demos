@@ -1,12 +1,12 @@
-"""Validate Neo4j connectivity and UC JDBC connection.
+"""Extra regression coverage for Neo4j connectivity and UC JDBC connection.
 
 Covers: Python driver, Spark Connector, direct JDBC (dbtable, SQL translation,
 aggregate, NATURAL JOIN), UC connection creation, and UC JDBC queries
 (basic, remote_query, COUNT, JOIN, WHERE, multiple aggregates, COUNT DISTINCT).
 
 Usage:
-    uv run python -m cli upload run_01_connection_validation.py
-    uv run python -m cli submit run_01_connection_validation.py
+    ./validate.sh --include-extras
+    uv run python -m cli submit run_extra_connection_smoke.py
 """
 
 import sys
