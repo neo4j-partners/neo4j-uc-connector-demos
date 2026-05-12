@@ -11,7 +11,12 @@ Usage:
 
 import sys
 
-from data_utils import ValidationResults, get_config, inject_params
+from data_utils import (
+    ValidationResults,
+    get_config,
+    inject_params,
+    read_neo4j_jdbc,
+)
 
 
 def main() -> None:
@@ -23,23 +28,23 @@ def main() -> None:
     spark = SparkSession.builder.getOrCreate()
     results = ValidationResults()
 
-    fqn = f"`{cfg['uc_catalog']}`.`{cfg['uc_schema']}`"
+    fqn = f"`{cfg.uc_catalog}`.`{cfg.uc_schema}`"
 
     print("=" * 60)
     print("validation: 02 Federated Queries")
     print("=" * 60)
     print("Notebook: getting-started/02-federated-queries.ipynb")
     print(f"  Tables:        {fqn}.*")
-    print(f"  UC Connection: {cfg['uc_connection_name']}")
+    print(f"  UC Connection: {cfg.uc_connection_name}")
     print("")
 
-    print("--- Helper: read_neo4j(custom_schema, query) ---")
+    print("--- Helper: read_neo4j_jdbc(custom_schema, query) ---")
 
     print("=" * 60)
     print("FEDERATED QUERY 1: Sensor Health by Aircraft")
     print("=" * 60)
     try:
-        sensor_topology = read_neo4j(
+        sensor_topology = read_neo4j_jdbc(
             spark,
             cfg,
             "aircraftId STRING, model STRING, systemType STRING, sensorId STRING",
@@ -93,7 +98,7 @@ def main() -> None:
     print("FEDERATED QUERY 2: Maintenance Severity + Sensor Health")
     print("=" * 60)
     try:
-        df_severity = read_neo4j(
+        df_severity = read_neo4j_jdbc(
             spark,
             cfg,
             "severity STRING, event_count LONG",
@@ -102,7 +107,7 @@ def main() -> None:
         print("\n  Maintenance events by severity:")
         df_severity.orderBy("event_count", ascending=False).show(truncate=False)
 
-        df_by_aircraft = read_neo4j(
+        df_by_aircraft = read_neo4j_jdbc(
             spark,
             cfg,
             "aircraftId STRING, maint_count LONG",
@@ -138,7 +143,7 @@ def main() -> None:
     print("FEDERATED QUERY 3: Flight Delay Analysis by Operator")
     print("=" * 60)
     try:
-        df_flights = read_neo4j(
+        df_flights = read_neo4j_jdbc(
             spark,
             cfg,
             "operator STRING, flight_count LONG",
@@ -148,7 +153,7 @@ def main() -> None:
         flight_rows = df_flights.collect()
         df_flights.orderBy("flight_count", ascending=False).show(truncate=False)
 
-        df_delays = read_neo4j(
+        df_delays = read_neo4j_jdbc(
             spark,
             cfg,
             "cause STRING, delay_count LONG, avg_minutes DOUBLE",
@@ -171,17 +176,6 @@ def main() -> None:
 
     if not results.summary():
         sys.exit(1)
-
-
-def read_neo4j(spark, cfg: dict, custom_schema: str, query: str):
-    """Read from Neo4j through the UC JDBC connection."""
-    return (
-        spark.read.format("jdbc")
-        .option("databricks.connection", cfg["uc_connection_name"])
-        .option("customSchema", custom_schema)
-        .option("query", query)
-        .load()
-    )
 
 
 if __name__ == "__main__":

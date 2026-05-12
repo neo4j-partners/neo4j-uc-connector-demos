@@ -12,7 +12,13 @@ Usage:
 import sys
 import time
 
-from data_utils import ValidationResults, get_config, inject_params
+from data_utils import (
+    Config,
+    ValidationResults,
+    get_config,
+    inject_params,
+    read_neo4j_jdbc,
+)
 
 
 def main() -> None:
@@ -24,8 +30,8 @@ def main() -> None:
     spark = SparkSession.builder.getOrCreate()
     results = ValidationResults()
 
-    fqn = f"`{cfg['uc_catalog']}`.`{cfg['uc_schema']}`"
-    volume_path = cfg["volume_path"]
+    fqn = f"`{cfg.uc_catalog}`.`{cfg.uc_schema}`"
+    volume_path = cfg.volume_path
 
     print("=" * 60)
     print("validation: 01 Connection Setup")
@@ -33,13 +39,13 @@ def main() -> None:
     print("Notebook: getting-started/01-neo4j-uc-connection-setup.ipynb")
     print(f"  Tables:        {fqn}.*")
     print(f"  Volume:        {volume_path}")
-    print(f"  UC Connection: {cfg['uc_connection_name']}")
+    print(f"  UC Connection: {cfg.uc_connection_name}")
     print("")
 
     print("--- Section 1: Load sensor_readings Delta Table ---")
     try:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {fqn}")
-        spark.sql(f"CREATE VOLUME IF NOT EXISTS {fqn}.`{cfg['uc_volume']}`")
+        spark.sql(f"CREATE VOLUME IF NOT EXISTS {fqn}.`{cfg.uc_volume}`")
         results.record("Create tutorial schema and volume", True, fqn)
     except Exception as exc:
         results.record("Create tutorial schema and volume", False, str(exc)[:160])
@@ -83,17 +89,17 @@ def main() -> None:
     print("\n--- Section 2: Create UC JDBC Connection ---")
     connection_created = False
     try:
-        spark.sql(f"DROP CONNECTION IF EXISTS {cfg['uc_connection_name']}")
+        spark.sql(f"DROP CONNECTION IF EXISTS {cfg.uc_connection_name}")
 
         create_sql = f"""
-            CREATE CONNECTION {cfg['uc_connection_name']} TYPE JDBC
+            CREATE CONNECTION {cfg.uc_connection_name} TYPE JDBC
             ENVIRONMENT (
-                java_dependencies '{cfg["java_dependencies"]}'
+                java_dependencies '{cfg.java_dependencies}'
             )
             OPTIONS (
-                url '{escape_sql_string(cfg["neo4j_jdbc_url_sql"])}',
-                user '{escape_sql_string(cfg["neo4j_username"])}',
-                password '{escape_sql_string(cfg["neo4j_password"])}',
+                url '{escape_sql_string(cfg.neo4j_jdbc_url_sql)}',
+                user '{escape_sql_string(cfg.neo4j_username)}',
+                password '{escape_sql_string(cfg.neo4j_password)}',
                 driver 'org.neo4j.jdbc.Neo4jDriver',
                 externalOptionsAllowList 'dbtable,query,partitionColumn,lowerBound,upperBound,numPartitions,fetchSize,customSchema'
             )
@@ -105,20 +111,14 @@ def main() -> None:
         results.record(
             "Create UC JDBC connection",
             True,
-            f"{cfg['uc_connection_name']}, {elapsed:.0f}ms",
+            f"{cfg.uc_connection_name}, {elapsed:.0f}ms",
         )
     except Exception as exc:
         results.record("Create UC JDBC connection", False, str(exc)[:200])
 
     if connection_created:
         try:
-            df = (
-                spark.read.format("jdbc")
-                .option("databricks.connection", cfg["uc_connection_name"])
-                .option("query", "SELECT 1 AS test")
-                .option("customSchema", "test INT")
-                .load()
-            )
+            df = read_neo4j_jdbc(spark, cfg, "test INT", "SELECT 1 AS test")
             test_val = df.collect()[0]["test"]
             results.record("Validate UC JDBC SELECT 1", test_val == 1, str(test_val))
         except Exception as exc:
@@ -146,7 +146,7 @@ def main() -> None:
         lambda rows: str(rows[0]["airport_count"]),
     )
     try:
-        df = read_neo4j(
+        df = read_neo4j_jdbc(
             spark,
             cfg,
             "operator STRING, flight_count LONG",
@@ -178,20 +178,9 @@ def escape_sql_string(value: str) -> str:
     return value.replace("'", "\\'")
 
 
-def read_neo4j(spark, cfg: dict, custom_schema: str, query: str):
-    """Read from Neo4j through the UC JDBC connection."""
-    return (
-        spark.read.format("jdbc")
-        .option("databricks.connection", cfg["uc_connection_name"])
-        .option("customSchema", custom_schema)
-        .option("query", query)
-        .load()
-    )
-
-
 def record_query(
     spark,
-    cfg: dict,
+    cfg: Config,
     results: ValidationResults,
     connection_created: bool,
     name: str,
@@ -205,7 +194,7 @@ def record_query(
         results.record(name, False, "skipped: connection not created")
         return
     try:
-        rows = read_neo4j(spark, cfg, custom_schema, query).collect()
+        rows = read_neo4j_jdbc(spark, cfg, custom_schema, query).collect()
         results.record(name, validator(rows), detail(rows))
     except Exception as exc:
         results.record(
@@ -215,7 +204,7 @@ def record_query(
         )
 
 
-def create_lakehouse_helper_tables(spark, cfg: dict, results: ValidationResults) -> None:
+def create_lakehouse_helper_tables(spark, cfg: Config, results: ValidationResults) -> None:
     """Create Delta helper tables required by advanced-patterns/06.
 
     The getting-started notebooks use the tutorial schema. The advanced
@@ -223,8 +212,8 @@ def create_lakehouse_helper_tables(spark, cfg: dict, results: ValidationResults)
     tables, so validation creates those from the same uploaded CSV data instead
     of assuming they already exist.
     """
-    lakehouse_fqn = f"`{cfg['lakehouse_catalog']}`.`{cfg['lakehouse_schema']}`"
-    volume_path = cfg["volume_path"]
+    lakehouse_fqn = f"`{cfg.lakehouse_catalog}`.`{cfg.lakehouse_schema}`"
+    volume_path = cfg.volume_path
 
     print("\n--- Validation Setup: Lakehouse Helper Tables ---")
     try:

@@ -26,18 +26,18 @@ def main() -> None:
     print("=" * 60)
     print("validation: 02 Federated Query Patterns")
     print("=" * 60)
-    print(f"  Lakehouse: {cfg['lakehouse_catalog']}.{cfg['lakehouse_schema']}")
-    print(f"  Neo4j:     {cfg['neo4j_host']}")
-    print(f"  UC Conn:   {cfg['uc_connection_name']}")
+    print(f"  Lakehouse: {cfg.lakehouse_catalog}.{cfg.lakehouse_schema}")
+    print(f"  Neo4j:     {cfg.neo4j_host}")
+    print(f"  UC Conn:   {cfg.uc_connection_name}")
     print("")
 
     try:
-        spark.sql(f"USE CATALOG `{cfg['lakehouse_catalog']}`")
-        spark.sql(f"USE SCHEMA `{cfg['lakehouse_schema']}`")
+        spark.sql(f"USE CATALOG `{cfg.lakehouse_catalog}`")
+        spark.sql(f"USE SCHEMA `{cfg.lakehouse_schema}`")
         vr.record(
             "Set lakehouse catalog/schema",
             True,
-            f"{cfg['lakehouse_catalog']}.{cfg['lakehouse_schema']}",
+            f"{cfg.lakehouse_catalog}.{cfg.lakehouse_schema}",
         )
     except Exception as exc:
         vr.record("Set lakehouse catalog/schema", False, str(exc)[:200])
@@ -136,16 +136,16 @@ def main() -> None:
                     flights.cnt AS total_flights,
                     deps.cnt AS flight_airport_connections
                 FROM
-                    remote_query('{cfg["uc_connection_name"]}',
+                    remote_query('{cfg.uc_connection_name}',
                         query => 'SELECT COUNT(*) AS cnt FROM MaintenanceEvent') AS maint
                 CROSS JOIN
-                    remote_query('{cfg["uc_connection_name"]}',
+                    remote_query('{cfg.uc_connection_name}',
                         query => 'SELECT COUNT(*) AS cnt FROM MaintenanceEvent WHERE severity = ''CRITICAL''') AS crit
                 CROSS JOIN
-                    remote_query('{cfg["uc_connection_name"]}',
+                    remote_query('{cfg.uc_connection_name}',
                         query => 'SELECT COUNT(*) AS cnt FROM Flight') AS flights
                 CROSS JOIN
-                    remote_query('{cfg["uc_connection_name"]}',
+                    remote_query('{cfg.uc_connection_name}',
                         query => 'SELECT COUNT(*) AS cnt FROM Flight f NATURAL JOIN DEPARTS_FROM r NATURAL JOIN Airport a') AS deps
             ) neo4j
             CROSS JOIN (
@@ -178,10 +178,10 @@ def main() -> None:
     try:
         t0 = time.time()
         neo4j_maintenance = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg["neo4j_bolt_uri"]) \
+            .option("url", cfg.neo4j_bolt_uri) \
             .option("authentication.type", "basic") \
-            .option("authentication.basic.username", cfg["neo4j_username"]) \
-            .option("authentication.basic.password", cfg["neo4j_password"]) \
+            .option("authentication.basic.username", cfg.neo4j_username) \
+            .option("authentication.basic.password", cfg.neo4j_password) \
             .option("labels", "MaintenanceEvent") \
             .load()
         neo4j_maintenance.createOrReplaceTempView("neo4j_maintenance")
@@ -195,10 +195,10 @@ def main() -> None:
     try:
         t0 = time.time()
         neo4j_flights = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg["neo4j_bolt_uri"]) \
+            .option("url", cfg.neo4j_bolt_uri) \
             .option("authentication.type", "basic") \
-            .option("authentication.basic.username", cfg["neo4j_username"]) \
-            .option("authentication.basic.password", cfg["neo4j_password"]) \
+            .option("authentication.basic.username", cfg.neo4j_username) \
+            .option("authentication.basic.password", cfg.neo4j_password) \
             .option("labels", "Flight") \
             .load()
         neo4j_flights.createOrReplaceTempView("neo4j_flights")

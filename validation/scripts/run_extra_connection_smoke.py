@@ -33,10 +33,10 @@ def main() -> None:
     print("=" * 60)
     print("validation: 01 Connection Validation")
     print("=" * 60)
-    print(f"  Neo4j Host:    {cfg['neo4j_host']}")
-    print(f"  Bolt URI:      {cfg['neo4j_bolt_uri']}")
-    print(f"  UC Connection: {cfg['uc_connection_name']}")
-    print(f"  JDBC JAR:      {cfg['jdbc_jar_path']}")
+    print(f"  Neo4j Host:    {cfg.neo4j_host}")
+    print(f"  Bolt URI:      {cfg.neo4j_bolt_uri}")
+    print(f"  UC Connection: {cfg.uc_connection_name}")
+    print(f"  JDBC JAR:      {cfg.jdbc_jar_path}")
     print("")
 
     # ============================================================================
@@ -61,7 +61,7 @@ def main() -> None:
         driver.verify_connectivity()
         ms = (time.time() - t0) * 1000
 
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             val = session.run("RETURN 1 AS test").single()["test"]
 
         driver.close()
@@ -76,10 +76,10 @@ def main() -> None:
     try:
         t0 = time.time()
         df = spark.read.format("org.neo4j.spark.DataSource") \
-            .option("url", cfg["neo4j_bolt_uri"]) \
+            .option("url", cfg.neo4j_bolt_uri) \
             .option("authentication.type", "basic") \
-            .option("authentication.basic.username", cfg["neo4j_username"]) \
-            .option("authentication.basic.password", cfg["neo4j_password"]) \
+            .option("authentication.basic.username", cfg.neo4j_username) \
+            .option("authentication.basic.password", cfg.neo4j_password) \
             .option("query", "RETURN 'ok' AS message, 1 AS value") \
             .load()
         rows = df.collect()
@@ -98,10 +98,10 @@ def main() -> None:
     try:
         t0 = time.time()
         df = spark.read.format("jdbc") \
-            .option("url", cfg["neo4j_jdbc_url_sql"]) \
+            .option("url", cfg.neo4j_jdbc_url_sql) \
             .option("driver", "org.neo4j.jdbc.Neo4jDriver") \
-            .option("user", cfg["neo4j_username"]) \
-            .option("password", cfg["neo4j_password"]) \
+            .option("user", cfg.neo4j_username) \
+            .option("password", cfg.neo4j_password) \
             .option("dbtable", "Aircraft") \
             .option("customSchema", AIRCRAFT_SCHEMA) \
             .load()
@@ -115,10 +115,10 @@ def main() -> None:
     try:
         t0 = time.time()
         df = spark.read.format("jdbc") \
-            .option("url", cfg["neo4j_jdbc_url_sql"]) \
+            .option("url", cfg.neo4j_jdbc_url_sql) \
             .option("driver", "org.neo4j.jdbc.Neo4jDriver") \
-            .option("user", cfg["neo4j_username"]) \
-            .option("password", cfg["neo4j_password"]) \
+            .option("user", cfg.neo4j_username) \
+            .option("password", cfg.neo4j_password) \
             .option("query", "SELECT 1 AS value") \
             .option("customSchema", "value INT") \
             .load()
@@ -132,10 +132,10 @@ def main() -> None:
     try:
         t0 = time.time()
         df = spark.read.format("jdbc") \
-            .option("url", cfg["neo4j_jdbc_url_sql"]) \
+            .option("url", cfg.neo4j_jdbc_url_sql) \
             .option("driver", "org.neo4j.jdbc.Neo4jDriver") \
-            .option("user", cfg["neo4j_username"]) \
-            .option("password", cfg["neo4j_password"]) \
+            .option("user", cfg.neo4j_username) \
+            .option("password", cfg.neo4j_password) \
             .option("query", "SELECT COUNT(*) AS flight_count FROM Flight") \
             .option("customSchema", "flight_count LONG") \
             .load()
@@ -149,10 +149,10 @@ def main() -> None:
     try:
         t0 = time.time()
         df = spark.read.format("jdbc") \
-            .option("url", cfg["neo4j_jdbc_url_sql"]) \
+            .option("url", cfg.neo4j_jdbc_url_sql) \
             .option("driver", "org.neo4j.jdbc.Neo4jDriver") \
-            .option("user", cfg["neo4j_username"]) \
-            .option("password", cfg["neo4j_password"]) \
+            .option("user", cfg.neo4j_username) \
+            .option("password", cfg.neo4j_password) \
             .option("query", """SELECT COUNT(*) AS cnt
                                FROM Flight f
                                NATURAL JOIN DEPARTS_FROM r
@@ -170,17 +170,17 @@ def main() -> None:
     # ============================================================================
     print("\n--- UC JDBC Connection ---")
     try:
-        spark.sql(f"DROP CONNECTION IF EXISTS {cfg['uc_connection_name']}")
+        spark.sql(f"DROP CONNECTION IF EXISTS {cfg.uc_connection_name}")
 
         create_sql = f"""
-        CREATE CONNECTION {cfg['uc_connection_name']} TYPE JDBC
+        CREATE CONNECTION {cfg.uc_connection_name} TYPE JDBC
         ENVIRONMENT (
-          java_dependencies '{cfg["java_dependencies"]}'
+          java_dependencies '{cfg.java_dependencies}'
         )
         OPTIONS (
-          url '{cfg["neo4j_jdbc_url_sql"]}',
-          user '{cfg["neo4j_username"]}',
-          password '{cfg["neo4j_password"]}',
+          url '{cfg.neo4j_jdbc_url_sql}',
+          user '{cfg.neo4j_username}',
+          password '{cfg.neo4j_password}',
           driver 'org.neo4j.jdbc.Neo4jDriver',
           externalOptionsAllowList 'dbtable,query,partitionColumn,lowerBound,upperBound,numPartitions,fetchSize,customSchema'
         )
@@ -188,13 +188,13 @@ def main() -> None:
         t0 = time.time()
         spark.sql(create_sql)
         ms = (time.time() - t0) * 1000
-        vr.record("UC connection created", True, f"{cfg['uc_connection_name']}, {ms:.0f}ms")
+        vr.record("UC connection created", True, f"{cfg.uc_connection_name}, {ms:.0f}ms")
     except Exception as e:
         vr.record("UC connection created", False, str(e)[:120])
 
     # Verify connection
     try:
-        df = spark.sql(f"DESCRIBE CONNECTION {cfg['uc_connection_name']}")
+        df = spark.sql(f"DESCRIBE CONNECTION {cfg.uc_connection_name}")
         vr.record("UC connection described", df.count() > 0)
     except Exception as e:
         vr.record("UC connection described", False, str(e)[:120])
@@ -218,7 +218,7 @@ def main() -> None:
     try:
         t0 = time.time()
         df = spark.sql(f"""
-            SELECT * FROM remote_query('{cfg["uc_connection_name"]}',
+            SELECT * FROM remote_query('{cfg.uc_connection_name}',
                 query => 'SELECT 1 AS test')
         """)
         val = df.collect()[0]["test"]

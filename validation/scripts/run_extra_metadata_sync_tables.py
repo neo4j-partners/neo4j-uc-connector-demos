@@ -18,6 +18,7 @@ from collections import defaultdict
 from functools import reduce
 
 from data_utils import (
+    Config,
     ValidationResults,
     get_config,
     get_neo4j_driver,
@@ -37,30 +38,66 @@ def cast_all_to_string(df):
     return df
 
 
+def materialize_jdbc_table(
+    spark,
+    cfg: Config,
+    vr: ValidationResults,
+    target_catalog: str,
+    schema: str,
+    results_log: list,
+    table_name: str,
+    query: str,
+    custom_schema: str,
+    expected_rows: int,
+    select_columns: list | None = None,
+) -> None:
+    """Read from Neo4j via UC JDBC and write as a managed Delta table."""
+    full_tbl = f"`{target_catalog}`.`{schema}`.`{table_name}`"
+    t0 = time.time()
+    try:
+        df = read_neo4j_jdbc(spark, cfg, custom_schema, query)
+        if select_columns:
+            df = df.select(*select_columns)
+        df = cast_all_to_string(df)
+        df.write.format("delta").mode("overwrite").option(
+            "overwriteSchema", "true"
+        ).saveAsTable(full_tbl)
+        row_count = spark.sql(f"SELECT COUNT(*) AS cnt FROM {full_tbl}").collect()[0]["cnt"]
+        ms = (time.time() - t0) * 1000
+        results_log.append({"table": table_name, "rows": row_count})
+        vr.record(
+            f"Getting Started materialized: {table_name}",
+            row_count == expected_rows,
+            f"{row_count} rows, {ms:.0f}ms",
+        )
+    except Exception as e:
+        vr.record(f"Getting Started materialized: {table_name}", False, str(e)[:160])
+
+
 def main() -> None:
     inject_params()
     cfg = get_config()
 
-    target_catalog = cfg["metadata_catalog"]
-    nodes_schema = cfg["nodes_schema"]
-    rels_schema = cfg["relationships_schema"]
+    target_catalog = cfg.metadata_catalog
+    nodes_schema = cfg.nodes_schema
+    rels_schema = cfg.relationships_schema
 
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
 
     # Set Neo4j credentials at session level (avoids repeating per-query)
-    spark.conf.set("neo4j.url", cfg["neo4j_bolt_uri"])
+    spark.conf.set("neo4j.url", cfg.neo4j_bolt_uri)
     spark.conf.set("neo4j.authentication.type", "basic")
-    spark.conf.set("neo4j.authentication.basic.username", cfg["neo4j_username"])
-    spark.conf.set("neo4j.authentication.basic.password", cfg["neo4j_password"])
-    spark.conf.set("neo4j.database", cfg["neo4j_database"])
+    spark.conf.set("neo4j.authentication.basic.username", cfg.neo4j_username)
+    spark.conf.set("neo4j.authentication.basic.password", cfg.neo4j_password)
+    spark.conf.set("neo4j.database", cfg.neo4j_database)
 
     vr = ValidationResults()
 
     print("=" * 60)
     print("validation: 03 Metadata Sync (Delta Tables)")
     print("=" * 60)
-    print(f"  Neo4j:    {cfg['neo4j_host']}")
+    print(f"  Neo4j:    {cfg.neo4j_host}")
     print(f"  Target:   {target_catalog}")
     print(f"  Nodes:    {target_catalog}.{nodes_schema}")
     print(f"  Rels:     {target_catalog}.{rels_schema}")
@@ -74,7 +111,7 @@ def main() -> None:
     try:
         driver = get_neo4j_driver(cfg)
         driver.verify_connectivity()
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             val = session.run("RETURN 1 AS test").single()["test"]
         driver.close()
         vr.record("Neo4j connectivity", val == 1)
@@ -93,7 +130,7 @@ def main() -> None:
 
     try:
         driver = get_neo4j_driver(cfg)
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             # Node label properties
             result = session.run("CALL db.schema.nodeTypeProperties()")
             for record in result:
@@ -183,77 +220,62 @@ def main() -> None:
     print("\n--- Getting Started Pattern: UC JDBC Materialized Tables ---")
     getting_started_results = []
 
-    def materialize_jdbc_table(table_name, query, custom_schema, expected_rows, select_columns=None):
-        full_tbl = f"`{target_catalog}`.`{GETTING_STARTED_SCHEMA}`.`{table_name}`"
-        t0 = time.time()
-        try:
-            df = read_neo4j_jdbc(spark, cfg, custom_schema, query)
-            if select_columns:
-                df = df.select(*select_columns)
-            df = cast_all_to_string(df)
-            df.write.format("delta").mode("overwrite").option(
-                "overwriteSchema", "true"
-            ).saveAsTable(full_tbl)
-            row_count = spark.sql(f"SELECT COUNT(*) AS cnt FROM {full_tbl}").collect()[0]["cnt"]
-            ms = (time.time() - t0) * 1000
-            getting_started_results.append({"table": table_name, "rows": row_count})
-            vr.record(
-                f"Getting Started materialized: {table_name}",
-                row_count == expected_rows,
-                f"{row_count} rows, {ms:.0f}ms",
-            )
-        except Exception as e:
-            vr.record(f"Getting Started materialized: {table_name}", False, str(e)[:160])
+    def materialize(table_name, query, custom_schema, expected_rows, select_columns=None):
+        materialize(
+            spark, cfg, vr, target_catalog, GETTING_STARTED_SCHEMA,
+            getting_started_results, table_name, query, custom_schema,
+            expected_rows, select_columns=select_columns,
+        )
 
-    materialize_jdbc_table(
+    materialize(
         "neo4j_aircraft",
         "SELECT aircraftId, tail_number, icao24, model, manufacturer, operator FROM Aircraft",
         "aircraftId STRING, tail_number STRING, icao24 STRING, model STRING, manufacturer STRING, operator STRING",
         20,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_airports",
         "SELECT airportId, name, city, country, iata, icao FROM Airport",
         "airportId STRING, name STRING, city STRING, country STRING, iata STRING, icao STRING",
         12,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_systems",
         "SELECT systemId, aircraftId, type, name FROM System",
         "systemId STRING, aircraftId STRING, type STRING, name STRING",
         80,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_sensors",
         "SELECT sensorId, systemId, type, name, unit FROM Sensor",
         "sensorId STRING, systemId STRING, type STRING, name STRING, unit STRING",
         160,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_components",
         "SELECT componentId, systemId, type, name FROM Component",
         "componentId STRING, systemId STRING, type STRING, name STRING",
         320,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_maintenance_events",
         "SELECT eventId, componentId, systemId, aircraftId, fault, severity, reported_at, corrective_action FROM MaintenanceEvent",
         "eventId STRING, componentId STRING, systemId STRING, aircraftId STRING, fault STRING, severity STRING, reported_at STRING, corrective_action STRING",
         300,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_flights",
         "SELECT flightId, flight_number, aircraftId, operator, origin, destination, scheduled_departure, scheduled_arrival FROM Flight",
         "flightId STRING, flight_number STRING, aircraftId STRING, operator STRING, origin STRING, destination STRING, scheduled_departure STRING, scheduled_arrival STRING",
         800,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_delays",
         "SELECT delayId, flightId, cause, CAST(minutes AS STRING) AS minutes FROM Delay",
         "delayId STRING, flightId STRING, cause STRING, minutes STRING",
         514,
     )
-    materialize_jdbc_table(
+    materialize(
         "neo4j_aircraft_systems",
         """SELECT a.aircraftId AS aircraftId, a.model AS model,
                   s.systemId AS systemId, s.type AS systemType, s.name AS systemName,

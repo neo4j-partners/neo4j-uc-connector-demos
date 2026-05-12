@@ -30,12 +30,8 @@ These scripts are the non-notebook execution path for the code demonstrated in
 | `run_05_metadata_sync_external_api.py` | Matches `advanced-patterns/05_metadata_sync_external_api.ipynb`: registers Neo4j schema through the External Metadata API |
 | `run_06_new_federated_queries.py` | Matches `advanced-patterns/06_new_federated_queries.ipynb`: validates advanced `remote_query()` SQL and Delta joins |
 
-`advanced-patterns/07_performance_diagnostics.ipynb` is optional and excluded
-from the default pass/fail suite:
-
-```bash
-uv run python validate.py run --include-performance
-```
+`advanced-patterns/07_performance_diagnostics.ipynb` is a manual notebook for
+investigating latency and throughput. It has no automated validation.
 
 ## Extra Regression Coverage
 

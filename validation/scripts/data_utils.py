@@ -16,6 +16,7 @@ Provides:
 import csv
 import os
 import sys
+from dataclasses import dataclass
 from urllib.parse import urlparse
 
 
@@ -61,8 +62,34 @@ def _load_secrets() -> None:
 # Configuration
 # ---------------------------------------------------------------------------
 
-def get_config() -> dict:
-    """Build config dict from environment variables set by inject_params()."""
+@dataclass(frozen=True)
+class Config:
+    """Resolved configuration for a validation run."""
+
+    neo4j_host: str
+    neo4j_username: str
+    neo4j_password: str
+    neo4j_database: str
+    neo4j_bolt_uri: str
+    neo4j_jdbc_url: str
+    neo4j_jdbc_url_sql: str
+    uc_connection_name: str
+    jdbc_jar_path: str
+    java_dependencies: str
+    lakehouse_catalog: str
+    lakehouse_schema: str
+    lakehouse_fqn: str
+    metadata_catalog: str
+    nodes_schema: str
+    relationships_schema: str
+    uc_catalog: str | None
+    uc_schema: str
+    uc_volume: str
+    volume_path: str | None
+
+
+def get_config() -> Config:
+    """Build Config from environment variables set by inject_params()."""
     neo4j_uri = os.environ.get("NEO4J_URI")
     neo4j_host = os.environ.get("NEO4J_HOST", "")
     if neo4j_uri:
@@ -74,47 +101,42 @@ def get_config() -> dict:
     else:
         neo4j_host = neo4j_host.rstrip("/")
 
-    neo4j_username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    neo4j_password = os.environ["NEO4J_PASSWORD"]
-    neo4j_database = os.environ.get("NEO4J_DATABASE", "neo4j")
-    uc_connection_name = os.environ["UC_CONNECTION_NAME"]
-    jdbc_jar_path = os.environ["JDBC_JAR_PATH"]
     uc_catalog = os.environ.get("UC_CATALOG")
     uc_schema = os.environ.get("UC_SCHEMA", "neo4j_getting_started")
     uc_volume = os.environ.get("UC_VOLUME", "aircraft_data")
     lakehouse_catalog = os.environ.get("LAKEHOUSE_CATALOG") or uc_catalog
-    lakehouse_schema = os.environ.get("LAKEHOUSE_SCHEMA") or "lakehouse"
     if not lakehouse_catalog:
         raise KeyError("LAKEHOUSE_CATALOG or UC_CATALOG")
+    lakehouse_schema = os.environ.get("LAKEHOUSE_SCHEMA") or "lakehouse"
     volume_path = (
         f"/Volumes/{uc_catalog}/{uc_schema}/{uc_volume}" if uc_catalog else None
     )
+    neo4j_database = os.environ.get("NEO4J_DATABASE", "neo4j")
     neo4j_host_with_port = _with_default_port(neo4j_host, 7687)
-    neo4j_bolt_uri = f"neo4j+s://{neo4j_host_with_port}"
+    jdbc_jar_path = os.environ["JDBC_JAR_PATH"]
 
-    return {
-        "neo4j_uri": neo4j_bolt_uri,
-        "neo4j_host": neo4j_host,
-        "neo4j_username": neo4j_username,
-        "neo4j_password": neo4j_password,
-        "neo4j_database": neo4j_database,
-        "neo4j_bolt_uri": neo4j_bolt_uri,
-        "neo4j_jdbc_url": f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}",
-        "neo4j_jdbc_url_sql": f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}?enableSQLTranslation=true",
-        "uc_connection_name": uc_connection_name,
-        "jdbc_jar_path": jdbc_jar_path,
-        "java_dependencies": f'["{jdbc_jar_path}"]',
-        "lakehouse_catalog": lakehouse_catalog,
-        "lakehouse_schema": lakehouse_schema,
-        "lakehouse_fqn": f"`{lakehouse_catalog}`.`{lakehouse_schema}`",
-        "metadata_catalog": os.environ.get("METADATA_CATALOG", "neo4j_metadata"),
-        "nodes_schema": os.environ.get("NODES_SCHEMA", "nodes"),
-        "relationships_schema": os.environ.get("RELATIONSHIPS_SCHEMA", "relationships"),
-        "uc_catalog": uc_catalog,
-        "uc_schema": uc_schema,
-        "uc_volume": uc_volume,
-        "volume_path": volume_path,
-    }
+    return Config(
+        neo4j_host=neo4j_host,
+        neo4j_username=os.environ.get("NEO4J_USERNAME", "neo4j"),
+        neo4j_password=os.environ["NEO4J_PASSWORD"],
+        neo4j_database=neo4j_database,
+        neo4j_bolt_uri=f"neo4j+s://{neo4j_host_with_port}",
+        neo4j_jdbc_url=f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}",
+        neo4j_jdbc_url_sql=f"jdbc:neo4j+s://{neo4j_host_with_port}/{neo4j_database}?enableSQLTranslation=true",
+        uc_connection_name=os.environ["UC_CONNECTION_NAME"],
+        jdbc_jar_path=jdbc_jar_path,
+        java_dependencies=f'["{jdbc_jar_path}"]',
+        lakehouse_catalog=lakehouse_catalog,
+        lakehouse_schema=lakehouse_schema,
+        lakehouse_fqn=f"`{lakehouse_catalog}`.`{lakehouse_schema}`",
+        metadata_catalog=os.environ.get("METADATA_CATALOG", "neo4j_metadata"),
+        nodes_schema=os.environ.get("NODES_SCHEMA", "nodes"),
+        relationships_schema=os.environ.get("RELATIONSHIPS_SCHEMA", "relationships"),
+        uc_catalog=uc_catalog,
+        uc_schema=uc_schema,
+        uc_volume=uc_volume,
+        volume_path=volume_path,
+    )
 
 
 def _host_from_neo4j_uri(value: str) -> str:
@@ -169,37 +191,37 @@ def csv_rows(path: str) -> list:
 # Neo4j helpers
 # ---------------------------------------------------------------------------
 
-def get_neo4j_driver(cfg: dict):
-    """Create and return a Neo4j driver from config dict.
+def get_neo4j_driver(cfg: Config):
+    """Create and return a Neo4j driver from config.
 
-    Uses cfg["neo4j_bolt_uri"], which get_config() always builds as
+    Uses cfg.neo4j_bolt_uri, which get_config() always builds as
     neo4j+s://host:port (TLS). Non-TLS bolt is not supported by validation —
     the project targets Neo4j Aura where TLS is mandatory.
     """
     from neo4j import GraphDatabase
-    return GraphDatabase.driver(cfg["neo4j_bolt_uri"], auth=(cfg["neo4j_username"], cfg["neo4j_password"]))
+    return GraphDatabase.driver(cfg.neo4j_bolt_uri, auth=(cfg.neo4j_username, cfg.neo4j_password))
 
 
 # ---------------------------------------------------------------------------
 # UC JDBC helpers
 # ---------------------------------------------------------------------------
 
-def read_neo4j_jdbc(spark, cfg: dict, custom_schema: str, query: str):
+def read_neo4j_jdbc(spark, cfg: Config, custom_schema: str, query: str):
     """Read from Neo4j through the UC JDBC connection."""
     return (
         spark.read.format("jdbc")
-        .option("databricks.connection", cfg["uc_connection_name"])
+        .option("databricks.connection", cfg.uc_connection_name)
         .option("customSchema", custom_schema)
         .option("query", query)
         .load()
     )
 
 
-def remote_query(spark, cfg: dict, query: str):
+def remote_query(spark, cfg: Config, query: str):
     """Execute a query via remote_query() SQL function."""
     safe_query = query.replace("'", "''")
     return spark.sql(f"""
-        SELECT * FROM remote_query('{cfg["uc_connection_name"]}',
+        SELECT * FROM remote_query('{cfg.uc_connection_name}',
             query => '{safe_query}')
     """)
 

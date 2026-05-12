@@ -16,7 +16,7 @@ from collections import defaultdict
 
 import requests
 
-from data_utils import ValidationResults, get_config, get_neo4j_driver, inject_params
+from data_utils import Config, ValidationResults, get_config, get_neo4j_driver, inject_params
 
 
 # Neo4j type → UC SQL type mapping
@@ -41,15 +41,15 @@ def is_already_exists(resp) -> bool:
     return resp.status_code == 409 or "ALREADY_EXISTS" in resp.text
 
 
-def build_label_payload(cfg: dict, label_name: str, properties: list) -> dict:
+def build_label_payload(cfg: Config, label_name: str, properties: list) -> dict:
     columns = [p["name"] for p in properties if p["name"]]
     # UC External Metadata stores columns as names only, so the richer Neo4j
     # type and mandatory-property details are encoded into properties for later
     # inspection by governance and lineage workflows.
     props_map = {
-        "neo4j.database": cfg["neo4j_database"],
+        "neo4j.database": cfg.neo4j_database,
         "neo4j.label": label_name,
-        "neo4j.host": cfg["neo4j_host"],
+        "neo4j.host": cfg.neo4j_host,
         "neo4j.property_count": str(len(columns)),
     }
     for p in properties:
@@ -66,7 +66,7 @@ def build_label_payload(cfg: dict, label_name: str, properties: list) -> dict:
         "entity_type": "NodeLabel",
         "description": f"Neo4j :{label_name} node label ({len(columns)} properties)",
         "columns": columns,
-        "url": cfg["neo4j_bolt_uri"],
+        "url": cfg.neo4j_bolt_uri,
         "properties": props_map,
     }
 
@@ -108,14 +108,14 @@ def discover_workspace_auth(spark, vr: ValidationResults):
     return workspace_url, auth_token
 
 
-def discover_schema(cfg: dict, vr: ValidationResults):
+def discover_schema(cfg: Config, vr: ValidationResults):
     discovered_labels = defaultdict(list)
     discovered_relationships = defaultdict(list)
     relationship_patterns = defaultdict(list)
 
     try:
         driver = get_neo4j_driver(cfg)
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             result = session.run("CALL db.schema.nodeTypeProperties()")
             for record in result:
                 if record["propertyName"] is None:
@@ -188,7 +188,7 @@ def main() -> None:
     print("validation: 05 Metadata Sync (External Metadata API)")
     print("=" * 60)
     print("Notebook: advanced-patterns/05_metadata_sync_external_api.ipynb")
-    print(f"  Neo4j: {cfg['neo4j_host']}")
+    print(f"  Neo4j: {cfg.neo4j_host}")
 
     # ------------------------------------------------------------------
     # Section 1: Auto-discover Workspace URL and Auth Token
@@ -220,7 +220,7 @@ def main() -> None:
     try:
         driver = get_neo4j_driver(cfg)
         driver.verify_connectivity()
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             val = session.run("RETURN 1 AS test").single()["test"]
         driver.close()
         vr.record("Neo4j connectivity", val == 1)
@@ -312,9 +312,9 @@ def main() -> None:
         columns = [p["name"] for p in properties if p["name"]]
 
         props_map = {
-            "neo4j.database": cfg["neo4j_database"],
+            "neo4j.database": cfg.neo4j_database,
             "neo4j.relationship_type": rel_type,
-            "neo4j.host": cfg["neo4j_host"],
+            "neo4j.host": cfg.neo4j_host,
             "neo4j.property_count": str(len(columns)),
         }
         patterns = relationship_patterns.get(rel_type, [])
@@ -338,7 +338,7 @@ def main() -> None:
             "entity_type": "RelationshipType",
             "description": f"Neo4j [:{rel_type}] relationship type ({len(columns)} properties)",
             "columns": columns,
-            "url": cfg["neo4j_bolt_uri"],
+            "url": cfg.neo4j_bolt_uri,
             "properties": props_map,
         }
 

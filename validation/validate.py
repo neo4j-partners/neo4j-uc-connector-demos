@@ -33,7 +33,6 @@ ENV_FILE = PROJECT_DIR / ".env"
 class ScriptSpec:
     name: str
     notebook: str | None = None
-    optional: bool = False
 
 
 @dataclass(frozen=True)
@@ -128,7 +127,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_run.add_argument("--skip-upload", action="store_true")
     p_run.add_argument("--include-extras", action="store_true")
-    p_run.add_argument("--include-performance", action="store_true")
     p_run.add_argument("--no-sync", action="store_true", help="Skip uv sync --locked")
     p_run.set_defaults(func=cmd_run)
 
@@ -207,8 +205,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     scripts = list(NOTEBOOK_PARITY.scripts)
     if args.include_extras:
         scripts.extend(EXTRAS.scripts)
-    if args.include_performance:
-        scripts.extend(PERFORMANCE.scripts)
 
     if args.skip_upload:
         print_step("Skipping script upload (--skip-upload)")
@@ -275,12 +271,11 @@ def cmd_logs(args: argparse.Namespace) -> int:
 
 
 def cmd_list(_: argparse.Namespace) -> int:
-    for suite in (NOTEBOOK_PARITY, EXTRAS, PERFORMANCE, METADATA):
+    for suite in (NOTEBOOK_PARITY, EXTRAS, METADATA):
         print(f"{suite.name}:")
         for spec in suite.scripts:
             notebook = f"  ({spec.notebook})" if spec.notebook else ""
-            marker = " [optional]" if spec.optional else ""
-            print(f"  {spec.name}{marker}{notebook}")
+            print(f"  {spec.name}{notebook}")
         print()
     return 0
 

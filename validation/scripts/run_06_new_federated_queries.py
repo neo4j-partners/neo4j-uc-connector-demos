@@ -12,7 +12,12 @@ Usage:
 import sys
 import time
 
-from data_utils import ValidationResults, get_config, inject_params
+from data_utils import (
+    ValidationResults,
+    get_config,
+    inject_params,
+    remote_query,
+)
 
 
 def main() -> None:
@@ -23,24 +28,24 @@ def main() -> None:
 
     spark = SparkSession.builder.getOrCreate()
     results = ValidationResults()
-    conn = cfg["uc_connection_name"]
-    lakehouse = cfg["lakehouse_fqn"]
+    conn = cfg.uc_connection_name
+    lakehouse = cfg.lakehouse_fqn
 
     print("=" * 60)
     print("validation: 06 New Federated Queries")
     print("=" * 60)
     print("Notebook: advanced-patterns/06_new_federated_queries.ipynb")
-    print(f"  Lakehouse: {cfg['lakehouse_catalog']}.{cfg['lakehouse_schema']}")
+    print(f"  Lakehouse: {cfg.lakehouse_catalog}.{cfg.lakehouse_schema}")
     print(f"  UC Conn:   {conn}")
     print("")
 
     try:
-        spark.sql(f"USE CATALOG `{cfg['lakehouse_catalog']}`")
-        spark.sql(f"USE SCHEMA `{cfg['lakehouse_schema']}`")
+        spark.sql(f"USE CATALOG `{cfg.lakehouse_catalog}`")
+        spark.sql(f"USE SCHEMA `{cfg.lakehouse_schema}`")
         results.record(
             "Set lakehouse catalog/schema",
             True,
-            f"{cfg['lakehouse_catalog']}.{cfg['lakehouse_schema']}",
+            f"{cfg.lakehouse_catalog}.{cfg.lakehouse_schema}",
         )
     except Exception as exc:
         results.record("Set lakehouse catalog/schema", False, str(exc)[:200])
@@ -48,15 +53,10 @@ def main() -> None:
             sys.exit(1)
         return
 
-    def rq(query: str):
-        """Execute SQL through Databricks remote_query()."""
-        safe_query = query.replace("'", "''")
-        return spark.sql(f"SELECT * FROM remote_query('{conn}', query => '{safe_query}')")
-
     def record_query(name: str, query: str, validator, detail):
         start = time.time()
         try:
-            rows = rq(query).collect()
+            rows = remote_query(spark, cfg, query).collect()
             elapsed = (time.time() - start) * 1000
             passed = validator(rows)
             results.record(name, passed, detail(rows, elapsed))

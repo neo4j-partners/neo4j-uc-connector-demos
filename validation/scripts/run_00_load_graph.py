@@ -28,7 +28,7 @@ def main():
     cfg = get_config()
 
     results = ValidationResults()
-    vol = cfg["volume_path"]
+    vol = cfg.volume_path
     if not vol:
         raise KeyError("UC_CATALOG is required to build the UC Volume path")
 
@@ -36,7 +36,7 @@ def main():
     print("run_00_load_graph: Aircraft Digital Twin Graph Setup")
     print("=" * 60)
     print("Notebook: getting-started/00-load-graph.ipynb")
-    print(f"  Neo4j URI: {cfg['neo4j_uri']}")
+    print(f"  Neo4j URI: {cfg.neo4j_uri}")
     print(f"  Volume:    {vol}")
     print("")
 
@@ -47,7 +47,7 @@ def main():
     # ------------------------------------------------------------------
     print("--- Section 1: Clear Existing Data ---")
     try:
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             session.run("MATCH (n) DETACH DELETE n")
         results.record("Clear existing data", True)
     except Exception as e:
@@ -70,7 +70,7 @@ def main():
         "CREATE INDEX maint_id IF NOT EXISTS FOR (n:MaintenanceEvent) ON (n.eventId)",
     ]
     try:
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             for query in indexes:
                 session.run(query)
         results.record("Create indexes", True, f"{len(indexes)} indexes")
@@ -135,7 +135,7 @@ def main():
     ]
 
     try:
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             for label, csv_path, query, expected in nodes:
                 session.run(query, rows=csv_rows(csv_path))
                 count = session.run(f"MATCH (n:{label}) RETURN count(n) AS cnt").single()["cnt"]
@@ -169,7 +169,7 @@ def main():
     ]
 
     try:
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             for rel_type, csv_path, match_create in relationships:
                 query = f"UNWIND $rows AS row {match_create}"
                 session.run(query, rows=csv_rows(csv_path))
@@ -188,7 +188,7 @@ def main():
         "Sensor": 160, "Flight": 800, "MaintenanceEvent": 300, "Delay": 514,
     }
     try:
-        with driver.session(database=cfg["neo4j_database"]) as session:
+        with driver.session(database=cfg.neo4j_database) as session:
             for label, expected in expected_counts.items():
                 count = session.run(f"MATCH (n:{label}) RETURN count(n) AS cnt").single()["cnt"]
                 results.record(f"Verify {label}", count == expected, f"{count} nodes")

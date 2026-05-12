@@ -22,8 +22,6 @@ The intended flow is:
   added around the notebook operations.
 - Extra smoke or regression coverage is useful, but it should be labeled as
   extra coverage rather than notebook parity.
-- `advanced-patterns/07_performance_diagnostics.ipynb` should stay optional by
-  default because timing diagnostics are environment-sensitive.
 
 ## Risks
 
@@ -56,8 +54,6 @@ Status: Complete
       `validation/scripts/run_05_metadata_sync_external_api.py`.
 - [x] Map `advanced-patterns/06_new_federated_queries.ipynb` to
       `validation/scripts/run_06_new_federated_queries.py`.
-- [x] Keep `advanced-patterns/07_performance_diagnostics.ipynb` out of the
-      default run.
 - [x] Decide whether existing broader checks should move to clearly named
       `run_extra_*` scripts.
 
@@ -172,34 +168,6 @@ Notes:
   is clarity and alignment, not reduced coverage.
 - Broader checks now run only with `uv run python validate.py run --include-extras`.
 
-### Phase 6: Keep Performance Optional
-
-Status: Complete
-
-- [x] Add an optional `run_07_performance_diagnostics.py` only if we want
-      non-notebook execution of the diagnostics.
-- [x] Add an explicit `--include-performance` flag before performance diagnostics
-      can run from validation.
-- [x] Treat performance output as diagnostic timing unless explicit thresholds
-      are defined.
-- [x] If thresholds are added later, document the compute mode, cluster size,
-      warm-up policy, and acceptable variance.
-- [x] Keep performance diagnostics out of the default pass/fail suite until
-      thresholds are stable.
-
-Validation:
-
-- [x] Default validation skips performance diagnostics.
-- [x] Optional performance validation prints timings and does not affect the
-      default notebook-parity result.
-
-Notes:
-
-- The existing performance notebook is useful for investigation, but it is not a
-  deterministic regression test yet.
-- `run_07_performance_diagnostics.py` records timings without thresholds and is
-  only submitted with `--include-performance`.
-
 ## Completion Criteria
 
 - [ ] A fresh configured workspace can run the aligned validation from sample
@@ -212,7 +180,6 @@ Notes:
       omission from the default suite is documented in `validation/README.md`.
 - [x] Validation executes the same core SQL, DataFrame, JDBC, metadata API, and
       materialization behavior as the notebooks.
-- [x] Default validation excludes performance diagnostics.
 - [x] Extra smoke and regression tests are clearly labeled as extra coverage.
 - [x] `validation/README.md` explains the setup flow and the notebook coverage
       model.

@@ -12,7 +12,13 @@ Usage:
 import sys
 import time
 
-from data_utils import ValidationResults, get_config, inject_params
+from data_utils import (
+    Config,
+    ValidationResults,
+    get_config,
+    inject_params,
+    read_neo4j_jdbc,
+)
 
 
 def main() -> None:
@@ -23,14 +29,14 @@ def main() -> None:
 
     spark = SparkSession.builder.getOrCreate()
     results = ValidationResults()
-    fqn = f"`{cfg['uc_catalog']}`.`{cfg['uc_schema']}`"
+    fqn = f"`{cfg.uc_catalog}`.`{cfg.uc_schema}`"
 
     print("=" * 60)
     print("validation: 03 Materialized Tables")
     print("=" * 60)
     print("Notebook: getting-started/03-materialized-tables.ipynb")
     print(f"  Tables:        {fqn}.*")
-    print(f"  UC Connection: {cfg['uc_connection_name']}")
+    print(f"  UC Connection: {cfg.uc_connection_name}")
     print("")
 
     print("--- Section 1: Verify Data Sources ---")
@@ -53,7 +59,7 @@ def main() -> None:
         ("Delay", 514),
     ]:
         try:
-            cnt = read_neo4j(
+            cnt = read_neo4j_jdbc(
                 spark, cfg, "cnt LONG", f"SELECT COUNT(*) AS cnt FROM {label}"
             ).collect()[0]["cnt"]
             results.record(f"Neo4j {label}", cnt == expected, f"{cnt} nodes")
@@ -161,8 +167,8 @@ def main() -> None:
         "INFORMATION_SCHEMA neo4j_* tables",
         f"""
         SELECT table_name, table_type
-        FROM `{cfg['uc_catalog']}`.information_schema.tables
-        WHERE table_schema = '{cfg['uc_schema']}'
+        FROM `{cfg.uc_catalog}`.information_schema.tables
+        WHERE table_schema = '{cfg.uc_schema}'
           AND table_name LIKE 'neo4j_%'
         ORDER BY table_name
         """,
@@ -174,8 +180,8 @@ def main() -> None:
         "INFORMATION_SCHEMA columns for neo4j_aircraft",
         f"""
         SELECT ordinal_position, column_name, data_type, is_nullable
-        FROM `{cfg['uc_catalog']}`.information_schema.columns
-        WHERE table_schema = '{cfg['uc_schema']}'
+        FROM `{cfg.uc_catalog}`.information_schema.columns
+        WHERE table_schema = '{cfg.uc_schema}'
           AND table_name = 'neo4j_aircraft'
         ORDER BY ordinal_position
         """,
@@ -304,17 +310,6 @@ def main() -> None:
         sys.exit(1)
 
 
-def read_neo4j(spark, cfg: dict, custom_schema: str, query: str):
-    """Read from Neo4j through the UC JDBC connection."""
-    return (
-        spark.read.format("jdbc")
-        .option("databricks.connection", cfg["uc_connection_name"])
-        .option("customSchema", custom_schema)
-        .option("query", query)
-        .load()
-    )
-
-
 def cast_all_to_string(df):
     """Match the notebook's CHAR(0)-safe Delta write workaround."""
     from pyspark.sql.types import StringType
@@ -326,7 +321,7 @@ def cast_all_to_string(df):
 
 def materialize(
     spark,
-    cfg: dict,
+    cfg: Config,
     results: ValidationResults,
     fqn: str,
     table_name: str,
@@ -336,7 +331,7 @@ def materialize(
 ) -> None:
     """Read from Neo4j via UC JDBC and write as a managed Delta table."""
     try:
-        df = read_neo4j(spark, cfg, custom_schema, query)
+        df = read_neo4j_jdbc(spark, cfg, custom_schema, query)
         df = cast_all_to_string(df)
         start = time.time()
         df.write.format("delta").mode("overwrite").option(
@@ -356,11 +351,11 @@ def materialize(
 
 
 def materialize_aircraft_systems(
-    spark, cfg: dict, results: ValidationResults, fqn: str
+    spark, cfg: Config, results: ValidationResults, fqn: str
 ) -> None:
     """Materialize the notebook's Aircraft -> HAS_SYSTEM -> System table."""
     try:
-        df = read_neo4j(
+        df = read_neo4j_jdbc(
             spark,
             cfg,
             "aircraftId STRING, model STRING, systemId STRING, systemType STRING, systemName STRING, cnt LONG",
