@@ -1,4 +1,4 @@
-name: neo4j-uc-connector-demos-docs
+name: neo4j-uc-integration-docs
 title: Neo4j + Databricks Lakehouse Federation
 version: '1.0'
 start_page: ROOT:index.adoc

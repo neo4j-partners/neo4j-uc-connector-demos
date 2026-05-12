@@ -1,5 +1,5 @@
 {
-  "name": "neo4j-uc-connector-demos-docs",
+  "name": "neo4j-uc-integration-docs",
   "version": "1.0.0",
   "description": "Neo4j + Databricks Lakehouse Federation Documentation",
   "scripts": {
