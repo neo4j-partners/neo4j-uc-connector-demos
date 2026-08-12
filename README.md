@@ -14,7 +14,9 @@ The project also demonstrates how to make Neo4j's schema visible in Databricks C
 
 ### Prerequisites
 
-Enable these preview features in your Databricks workspace:
+The custom-driver JDBC connection reached Public Preview at Databricks Runtime 18.1 and Databricks SQL 2025.40. The queries in this repo ran on Runtime 17.3 LTS, where the two preview features below must be enabled. Standard and dedicated clusters need Databricks Runtime 17.3 LTS or above; SQL warehouses need pro or serverless on Databricks SQL 2025.35 or above plus the "Enable networking for isolated workloads in Serverless SQL Warehouses" preview.
+
+Enable these preview features in your Databricks workspace when running below the Public Preview milestone:
 
 | Feature | Required For |
 |---------|--------------|
@@ -167,7 +169,7 @@ The integration works today through Unity Catalog's custom JDBC connection. Elev
 - **Column-level lineage and audit.** Every query is tracked in `system.access.audit` with full context, and column-level lineage covers notebooks, jobs, and dashboards.
 - **Improved query pushdown.** Broader filter, projection, aggregate, and sort pushdown managed by Databricks, with potential join pushdown mapping cross-table joins to native graph traversals.
 - **Genie and AI/BI Dashboards.** Neo4j foreign tables queryable via natural language and drag-and-drop dashboards without materialization as a prerequisite.
-- **Service principal and OAuth support.** Native credential management rather than user and password stored in connection options.
+- **Service principal support.** Native Databricks service-principal credential management. The JDBC connection today already supports a stored username and password and OAuth Machine-to-Machine, which is in Beta; service credentials are not supported on the JDBC path.
 
 For the full capability breakdown and trade-offs, see [docs/neo4j-offiicial-data-source-unlock.md](docs/neo4j-offiicial-data-source-unlock.md).
 
@@ -179,3 +181,17 @@ For the full capability breakdown and trade-offs, see [docs/neo4j-offiicial-data
 - [Neo4j SQL2Cypher Translation](https://neo4j.com/docs/jdbc-manual/current/sql2cypher/)
 - [Databricks Unity Catalog JDBC](https://docs.databricks.com/aws/en/connect/jdbc-connection)
 - [Databricks Lakehouse Federation](https://docs.databricks.com/aws/en/query-federation/)
+
+---
+
+## Integrations Showcased
+
+- **SQL access to Neo4j via Unity Catalog JDBC.** Query the graph with SQL through a `TYPE JDBC` UC connection; the driver translates SQL to Cypher with no Cypher knowledge required.
+- **`remote_query()` federation.** Push aggregates, GROUP BY, HAVING, and ORDER BY down into Neo4j and join the results with Delta tables in a single Spark SQL statement.
+- **Cross-source federated queries.** Combine Neo4j graph topology with Delta time-series and analytics tables at read time, with no ETL pipelines.
+- **Metadata synchronization.** Make Neo4j's schema discoverable in Catalog Explorer through materialized Delta tables and the UC External Metadata API.
+- **Materialized Delta tables.** Persist Neo4j node labels and relationship types as managed Delta tables for unrestricted SQL and `INFORMATION_SCHEMA` access.
+- **Natural language via AI/BI Genie.** Ask plain-English questions over materialized Neo4j data, with Genie generating governed SQL across graph and lakehouse tables.
+- **Unity Catalog governance.** Route Neo4j access through the same credentials, permissions, secrets, and audit controls as the rest of the lakehouse.
+- **SafeSpark compatibility tuning.** Run the custom Neo4j JDBC driver in the isolated SafeSpark sandbox using documented metaspace configuration.
+- **Automated end-to-end validation.** Exercise data load, connection, federation, and metadata sync as Databricks Asset Bundle jobs for smoke testing.

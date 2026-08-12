@@ -146,6 +146,24 @@ to your UC Volume before running the notebooks:
 This creates the configured UC schema and managed volume when needed, then
 copies all CSV files to `/Volumes/{UC_CATALOG}/{UC_SCHEMA}/{UC_VOLUME}/`.
 
+### Load Neo4j Locally (without Databricks)
+
+For local testing, `load_local.py` seeds the same aircraft graph directly from
+the CSV files in `getting-started/data/aircraft_digital_twin_data/` using the
+Neo4j Python driver. It is a standalone counterpart to notebook
+`00-load-graph.ipynb` and `validation/scripts/run_00_load_graph.py`, with no
+Databricks, UC Volume, or Spark required:
+
+```bash
+uv run getting-started/load_local.py
+```
+
+It reads `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, and `NEO4J_DATABASE`
+from the repo-root `.env`, clears any existing data, creates indexes, loads all
+node and relationship types, and verifies the node counts. Dependencies
+(`neo4j`, `python-dotenv`) are declared inline via PEP 723, so `uv run`
+installs them automatically.
+
 ### Set Up Databricks Secrets
 
 Notebooks use Databricks secrets for Neo4j credentials, UC volume settings, the

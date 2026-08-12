@@ -1,6 +1,6 @@
 # What Official Federated Data Source Status Unlocks for the Neo4j UC Connector
 
-Today the Neo4j connector works via Unity Catalog's custom JDBC connection (beta). Becoming an officially supported federated data source would unlock the following capabilities.
+Today the Neo4j connector works via Unity Catalog's custom JDBC connection, which reached Public Preview at Databricks Runtime 18.1 and Databricks SQL 2025.40. Becoming an officially supported federated data source would unlock the following capabilities.
 
 ## Catalog-Level Integration
 
@@ -19,7 +19,9 @@ Today the Neo4j connector works via Unity Catalog's custom JDBC connection (beta
 
 ## Authentication
 
-- **Connector-level OAuth flows**: Some official connectors (e.g., Snowflake) support OAuth; a Neo4j connector could expose the same capability, storing credentials securely in the connection object and hiding them from querying users. This would need to be built into the Neo4j connector specifically; it is not automatically inherited from official status.
+The JDBC connection already supports Static Credential (username and password) and OAuth Machine-to-Machine, which is in Beta, on the Databricks side. It does not support Unity Catalog credentials or service credentials. Official status would add the following.
+
+- **Connector-level OAuth flows**: Some official connectors (e.g., Snowflake) support OAuth to the source; a Neo4j connector could expose the same capability, storing credentials securely in the connection object and hiding them from querying users. This would need to be built into the Neo4j connector specifically; it is not automatically inherited from official status.
 - **Service credential integration**: Native support for Databricks service principals
 
 ## Query Performance
