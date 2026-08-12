@@ -136,7 +136,11 @@ def get_config() -> Config:
         neo4j_username=os.environ.get("NEO4J_USERNAME", "neo4j"),
         neo4j_password=os.environ["NEO4J_PASSWORD"],
         neo4j_database=neo4j_database,
-        neo4j_jdbc_url_sql=f"jdbc:{neo4j_uri}/{neo4j_database}?enableSQLTranslation=true",
+        neo4j_jdbc_url_sql=(
+            f"jdbc:{neo4j_uri}/{neo4j_database}"
+            "?enableSQLTranslation=true"
+            "&timeout=30000"
+        ),
         uc_connection_name=os.environ["UC_CONNECTION_NAME"],
         jdbc_jar_path=jdbc_jar_path,
         java_dependencies=f'["{jdbc_jar_path}"]',
